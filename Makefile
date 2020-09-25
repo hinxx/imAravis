@@ -16,14 +16,16 @@
 
 EXE = imAravis
 SOURCES = main.cpp
+SOURCES += imaravis.cpp
 SOURCES += ./imgui/imgui_impl_glfw.cpp ./imgui/imgui_impl_opengl3.cpp
 SOURCES += ./imgui/imgui.cpp ./imgui/imgui_demo.cpp ./imgui/imgui_draw.cpp ./imgui/imgui_widgets.cpp
 OBJS = $(addsuffix .o, $(basename $(notdir $(SOURCES))))
 UNAME_S := $(shell uname -s)
 
 CXXFLAGS = -I./imgui -I.
+CXXFLAGS += $(shell PKG_CONFIG_PATH=./aravis/lib/x86_64-linux-gnu/pkgconfig pkg-config --cflags aravis-0.8)
 CXXFLAGS += -g -Wall -Wformat
-LIBS =
+LIBS = $(shell PKG_CONFIG_PATH=./aravis/lib/x86_64-linux-gnu/pkgconfig pkg-config --libs aravis-0.8)
 
 ##---------------------------------------------------------------------
 ## OPENGL LOADER

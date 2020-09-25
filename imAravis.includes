@@ -1,4 +1,9 @@
+/usr/include/glib-2.0
+/usr/lib/x86_64-linux-gnu/glib-2.0/include
+/usr/include/libxml2
+/usr/include/libusb-1.0
 imgui/libs/gl3w
 imgui/libs
 imgui
+aravis/include/aravis-0.8
 .

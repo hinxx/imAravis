@@ -1,0 +1,10 @@
+prefix=/home/hinkokocevar/Code/aravis-0.8/build
+libdir=${prefix}/lib/x86_64-linux-gnu
+includedir=${prefix}/include
+
+Name: Aravis
+Description: Camera control and image acquisition library
+Version: 0.8.1
+Requires: glib-2.0 >= 2.44, gobject-2.0, gio-2.0, libxml-2.0, zlib, libusb-1.0
+Libs: -lm -L${libdir} -laravis-0.8
+Cflags: -I${includedir}/aravis-0.8

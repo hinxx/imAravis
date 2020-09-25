@@ -7,6 +7,8 @@
 #include "imgui_impl_opengl3.h"
 #include <stdio.h>
 
+#include "imaravis.h"
+
 // About Desktop OpenGL function loaders:
 //  Modern desktop OpenGL doesn't have a standard portable header file to load OpenGL function pointers.
 //  Helper libraries are often used for this purpose! Here we are supporting a few common ones (gl3w, glew, glad).
@@ -138,6 +140,9 @@ int main(int, char**)
     bool show_another_window = false;
     ImVec4 clear_color = ImVec4(0.45f, 0.55f, 0.60f, 1.00f);
 
+    // aravis
+    imAravis *cam = new imAravis();
+
     // Main loop
     while (!glfwWindowShouldClose(window))
     {
@@ -201,6 +206,9 @@ int main(int, char**)
 
         glfwSwapBuffers(window);
     }
+
+    // aravis
+    delete cam;
 
     // Cleanup
     ImGui_ImplOpenGL3_Shutdown();
