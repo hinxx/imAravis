@@ -75,7 +75,7 @@ int main(int, char**)
 #endif
 
     // Create window with graphics context
-    GLFWwindow* window = glfwCreateWindow(1280, 720, "Dear ImGui GLFW+OpenGL3 example", NULL, NULL);
+    GLFWwindow* window = glfwCreateWindow(1280, 720, "ImAravis", NULL, NULL);
     if (window == NULL)
         return 1;
     glfwMakeContextCurrent(window);
@@ -142,14 +142,14 @@ int main(int, char**)
 
     // aravis
     imAravis *cam = new imAravis();
-    GLuint image_texture = 0;
+    GLuint imageTexture = 0;
 
-    GLint ExtensionCount;
-    glGetIntegerv(GL_NUM_EXTENSIONS, &ExtensionCount);
-    fprintf(stderr, "GL_NUM_EXTENSIONS: %d\n", ExtensionCount);
-    for (int i = 0; i < ExtensionCount; i++) {
-        fprintf(stderr, "[%d] %s\n", i, glGetStringi( GL_EXTENSIONS, i));
-    }
+//    GLint ExtensionCount;
+//    glGetIntegerv(GL_NUM_EXTENSIONS, &ExtensionCount);
+//    fprintf(stderr, "GL_NUM_EXTENSIONS: %d\n", ExtensionCount);
+//    for (int i = 0; i < ExtensionCount; i++) {
+//        fprintf(stderr, "[%d] %s\n", i, glGetStringi( GL_EXTENSIONS, i));
+//    }
 
     // Main loop
     while (!glfwWindowShouldClose(window))
@@ -207,8 +207,8 @@ int main(int, char**)
             ImGui::Begin("Aravis Window");
 
             ImGui::Text("Device info   : %s %s %s", cam->vendor, cam->model, cam->device);
-            ImGui::Text("Image size    : %d x %d px, %d bpp", cam->image_width, cam->image_height, 8*cam->image_depth);
-            ImGui::Text("Image payload : %zu bytes", cam->payload);
+            ImGui::Text("Image size    : %d x %d px, %d bpp", cam->imageWidth, cam->imageHeight, 24);
+            ImGui::Text("Image payload : %zu bytes", cam->imageSize);
 
             if (ImGui::Button("Start")) {
                 arv_camera_start_acquisition(cam->camera, NULL);
@@ -229,10 +229,10 @@ int main(int, char**)
 //            cam->error_count = 0;
 //            cam->transferred = 0;
 
-            if (! image_texture) {
+            if (! imageTexture) {
                 // Create a OpenGL texture identifier
-                glGenTextures(1, &image_texture);
-                glBindTexture(GL_TEXTURE_2D, image_texture);
+                glGenTextures(1, &imageTexture);
+                glBindTexture(GL_TEXTURE_2D, imageTexture);
 
                 // Setup filtering parameters for display
                 // glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
@@ -243,22 +243,24 @@ int main(int, char**)
                 glPixelStorei(GL_UNPACK_ROW_LENGTH, 0);
             }
 
-            if (cam->image_updated) {
-                if (cam->image_depth == 1) {
-                    glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA, cam->image_width, cam->image_height, 0, GL_RED, GL_UNSIGNED_BYTE, cam->image_data);
-                } else if (cam->image_depth == 2) {
-                    glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA, cam->image_width, cam->image_height, 0, GL_RED, GL_UNSIGNED_SHORT, cam->image_data);
-                }
-                if (glGetError() != 0) {
-                    fprintf(stderr, "glGetError() returned 0x%04X\n", glGetError());
-                }
-                cam->image_updated = false;
+            if (cam->imageUpdated) {
+//                if (cam->image_depth == 1) {
+//                    glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA, cam->image_width, cam->image_height, 0, GL_RED, GL_UNSIGNED_BYTE, cam->image_data);
+//                } else if (cam->image_depth == 2) {
+//                    glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA, cam->image_width, cam->image_height, 0, GL_RED, GL_UNSIGNED_SHORT, cam->image_data);
+//                }
+                // we expect a RGB, no alpha, type of pixel data
+                glTexImage2D(GL_TEXTURE_2D, 0, GL_RGB, cam->imageWidth, cam->imageHeight, 0, GL_RGB, GL_UNSIGNED_BYTE, cam->imageData);
+                int glError = glGetError();
+                fprintf(stderr, "glGetError() returned 0x%04X\n", glError);
+                assert(glError == 0);
+                cam->imageUpdated = false;
             }
 
 //            ImGui::Begin("OpenGL Raw Image 2");
-            ImGui::Text("pointer = %p", (void*)(intptr_t)image_texture);
+            ImGui::Text("pointer = %p", (void*)(intptr_t)imageTexture);
 //            ImGui::Text("size = %d x %d", my_raw_image_width2, my_raw_image_height2);
-            ImGui::Image((void*)(intptr_t)image_texture, ImVec2(cam->image_width, cam->image_height));
+            ImGui::Image((void*)(intptr_t)imageTexture, ImVec2(cam->imageWidth, cam->imageHeight));
 //            ImGui::End();
 
             ImGui::End();

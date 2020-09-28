@@ -27,8 +27,8 @@ struct imAravis
     ArvCamera *camera;
 	ArvStream *stream;
 
-    int buffer_count;
-	int error_count;
+    int bufferCount;
+	int errorCount;
 	size_t transferred;
 
 //	ArvChunkParser *chunk_parser;
@@ -37,15 +37,16 @@ struct imAravis
     char *vendor;
     char *model;
     char *device;
-    size_t payload;
-    int pixel_format;
-    int image_width;
-    int image_height;
-    int image_depth;
+//    size_t payload;
+//    int pixel_format;
+    int imageWidth;
+    int imageHeight;
+//    int image_depth;
     bool acquiring;
-    void *image_data;
-    size_t image_size;
-    bool image_updated;
+//    void *imageDataRaw;
+    size_t imageSize;
+    bool imageUpdated;
+    void *imageData;
 };
 
 #endif // IMARAVIS_H
