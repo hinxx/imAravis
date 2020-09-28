@@ -142,6 +142,14 @@ int main(int, char**)
 
     // aravis
     imAravis *cam = new imAravis();
+    GLuint image_texture = 0;
+
+    GLint ExtensionCount;
+    glGetIntegerv(GL_NUM_EXTENSIONS, &ExtensionCount);
+    fprintf(stderr, "GL_NUM_EXTENSIONS: %d\n", ExtensionCount);
+    for (int i = 0; i < ExtensionCount; i++) {
+        fprintf(stderr, "[%d] %s\n", i, glGetStringi( GL_EXTENSIONS, i));
+    }
 
     // Main loop
     while (!glfwWindowShouldClose(window))
@@ -192,6 +200,67 @@ int main(int, char**)
             ImGui::Text("Hello from another window!");
             if (ImGui::Button("Close Me"))
                 show_another_window = false;
+            ImGui::End();
+        }
+
+        {
+            ImGui::Begin("Aravis Window");
+
+            ImGui::Text("Device info   : %s %s %s", cam->vendor, cam->model, cam->device);
+            ImGui::Text("Image size    : %d x %d px, %d bpp", cam->image_width, cam->image_height, 8*cam->image_depth);
+            ImGui::Text("Image payload : %zu bytes", cam->payload);
+
+            if (ImGui::Button("Start")) {
+                arv_camera_start_acquisition(cam->camera, NULL);
+                cam->acquiring = true;
+            }
+            ImGui::SameLine();
+            if (ImGui::Button("Stop")) {
+                arv_camera_stop_acquisition(cam->camera, NULL);
+                cam->acquiring = false;
+            }
+
+//            ImGui::TextColored(ImColor(1, 1, 0), "Statistics");
+//            ImGui::Text("%3d frame%s - %7.3g MiB", cam->buffer_count, cam->buffer_count > 1 ? "s/s" : "/s ", (double) cam->transferred / 1e6);
+//            if (cam->error_count > 0) {
+//                ImGui::TextColored(ImColor(1, 0, 0), "%d error%s", cam->error_count, cam->error_count > 1 ? "s" : "");
+//            }
+//            cam->buffer_count = 0;
+//            cam->error_count = 0;
+//            cam->transferred = 0;
+
+            if (! image_texture) {
+                // Create a OpenGL texture identifier
+                glGenTextures(1, &image_texture);
+                glBindTexture(GL_TEXTURE_2D, image_texture);
+
+                // Setup filtering parameters for display
+                // glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
+                // glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
+                glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
+                glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
+                // Upload pixels into texture
+                glPixelStorei(GL_UNPACK_ROW_LENGTH, 0);
+            }
+
+            if (cam->image_updated) {
+                if (cam->image_depth == 1) {
+                    glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA, cam->image_width, cam->image_height, 0, GL_RED, GL_UNSIGNED_BYTE, cam->image_data);
+                } else if (cam->image_depth == 2) {
+                    glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA, cam->image_width, cam->image_height, 0, GL_RED, GL_UNSIGNED_SHORT, cam->image_data);
+                }
+                if (glGetError() != 0) {
+                    fprintf(stderr, "glGetError() returned 0x%04X\n", glGetError());
+                }
+                cam->image_updated = false;
+            }
+
+//            ImGui::Begin("OpenGL Raw Image 2");
+            ImGui::Text("pointer = %p", (void*)(intptr_t)image_texture);
+//            ImGui::Text("size = %d x %d", my_raw_image_width2, my_raw_image_height2);
+            ImGui::Image((void*)(intptr_t)image_texture, ImVec2(cam->image_width, cam->image_height));
+//            ImGui::End();
+
             ImGui::End();
         }
 

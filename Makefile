@@ -23,9 +23,12 @@ OBJS = $(addsuffix .o, $(basename $(notdir $(SOURCES))))
 UNAME_S := $(shell uname -s)
 
 CXXFLAGS = -I./imgui -I.
-CXXFLAGS += $(shell PKG_CONFIG_PATH=./aravis/lib/x86_64-linux-gnu/pkgconfig pkg-config --cflags aravis-0.8)
+#CXXFLAGS += $(shell PKG_CONFIG_PATH=./aravis/lib/x86_64-linux-gnu/pkgconfig pkg-config --cflags aravis-0.8)
+CXXFLAGS += -pthread -I./aravis/include/aravis-0.8 -I/usr/include/glib-2.0 -I/usr/lib/x86_64-linux-gnu/glib-2.0/include -I/usr/include/libxml2		
+
 CXXFLAGS += -g -Wall -Wformat
-LIBS = $(shell PKG_CONFIG_PATH=./aravis/lib/x86_64-linux-gnu/pkgconfig pkg-config --libs aravis-0.8)
+#LIBS = $(shell PKG_CONFIG_PATH=./aravis/lib/x86_64-linux-gnu/pkgconfig pkg-config --libs aravis-0.8)
+LIBS = -L./aravis/lib/x86_64-linux-gnu -lm -laravis-0.8 -lgio-2.0 -lgobject-2.0 -lglib-2.0 -lxml2 -lz -lusb-1.0
 
 ##---------------------------------------------------------------------
 ## OPENGL LOADER

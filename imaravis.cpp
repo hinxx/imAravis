@@ -34,7 +34,7 @@ static bool arv_option_realtime = false;
 static bool arv_option_high_priority = false;
 static bool arv_option_no_packet_socket = false;
 static char *arv_option_chunks = NULL;
-static unsigned int arv_option_bandwidth_limit = -1;
+//static unsigned int arv_option_bandwidth_limit = -1;
 
 
 
@@ -57,6 +57,10 @@ static unsigned int arv_option_bandwidth_limit = -1;
 //}
 
 imAravis::imAravis() {
+    image_updated = false;
+    image_data = NULL;
+    image_size = 0;
+
     bool ret = initialize();
     assert(ret == true);
 }
@@ -69,15 +73,6 @@ imAravis::~imAravis() {
 void imAravis::new_buffer_cb(ArvStream *_stream, void *_arg)
 {
 	ArvBuffer *buffer;
-    struct timeval tv;
-    char filename[256];
-    const void *raw;
-    int width;
-    int height;
-    size_t size;
-    size_t ret;
-    int fd;
-    int pixel_format;
 
     imAravis *me = (imAravis *)_arg;
 
@@ -92,53 +87,78 @@ void imAravis::new_buffer_cb(ArvStream *_stream, void *_arg)
 			me->error_count++;
 		}
 
-		if (arv_buffer_has_chunks (buffer) && me->chunks != NULL) {
-			int i;
+//		if (arv_buffer_has_chunks (buffer) && me->chunks != NULL) {
+//			int i;
 
-			for (i = 0; me->chunks[i] != NULL; i++) {
-				gint64 integer_value;
-				GError *error = NULL;
+//			for (i = 0; me->chunks[i] != NULL; i++) {
+//				gint64 integer_value;
+//				GError *error = NULL;
 
-				integer_value = arv_chunk_parser_get_integer_value (me->chunk_parser, buffer, me->chunks[i], &error);
-				if (error == NULL)
-					printf ("%s = %" G_GINT64_FORMAT "\n", me->chunks[i], integer_value);
-				else {
-					double float_value;
+//				integer_value = arv_chunk_parser_get_integer_value (me->chunk_parser, buffer, me->chunks[i], &error);
+//				if (error == NULL)
+//					fprintf(stderr, "%s = %" G_GINT64_FORMAT "\n", me->chunks[i], integer_value);
+//				else {
+//					double float_value;
 
-					g_clear_error (&error);
-					float_value = arv_chunk_parser_get_float_value (me->chunk_parser, buffer, me->chunks[i], &error);
-					if (error == NULL)
-						printf ("%s = %g\n", me->chunks[i], float_value);
-					else
-						g_clear_error (&error);
-				}
-			}
-		}
+//					g_clear_error (&error);
+//					float_value = arv_chunk_parser_get_float_value (me->chunk_parser, buffer, me->chunks[i], &error);
+//					if (error == NULL)
+//						printf ("%s = %g\n", me->chunks[i], float_value);
+//					else
+//						g_clear_error (&error);
+//				}
+//			}
+//		}
 
 		/* Image processing here */
 
-        width = arv_buffer_get_image_width(buffer);
-        g_assert(width > 0);
-        height = arv_buffer_get_image_height(buffer);
-        g_assert(height > 0);
-        size = 0;
-        raw = arv_buffer_get_data(buffer, &size);
-        g_assert(raw != NULL);
-        pixel_format = arv_buffer_get_image_pixel_format(buffer);
-        printf("image %lu bytes, pixel format %08X\n", size, pixel_format);
-        switch (pixel_format) {
-        case ARV_PIXEL_FORMAT_MONO_16: printf("pixel format ARV_PIXEL_FORMAT_MONO_16\n"); break;
-        case ARV_PIXEL_FORMAT_MONO_8: printf("pixel format ARV_PIXEL_FORMAT_MONO_8\n"); break;
-        default: printf("pixel format ????\n"); break;
-        }
+        me->image_width = arv_buffer_get_image_width(buffer);
+        assert(me->image_width > 0);
+        me->image_height = arv_buffer_get_image_height(buffer);
+        assert(me->image_height > 0);
+        me->payload = 0;
+        const void *raw = arv_buffer_get_data(buffer, &me->payload);
+        assert(raw != NULL);
+        me->pixel_format = arv_buffer_get_image_pixel_format(buffer);
+        fprintf(stderr, "image %lu bytes, pixel format %08X\n", me->payload, me->pixel_format);
 
-        gettimeofday(&tv, NULL);
-        sprintf(filename, "%ld_%ld.dat", tv.tv_sec, tv.tv_usec);
-        fd = open(filename, O_WRONLY | O_CREAT, 0666);
-        ret = write(fd, raw, size);
-        g_assert(size == ret);
-        printf("wrote %lu bytes to file %s\n", ret, filename);
-        close(fd);
+        me->image_depth = 0;
+        switch (me->pixel_format) {
+        case ARV_PIXEL_FORMAT_MONO_16:
+            fprintf(stderr, "pixel format ARV_PIXEL_FORMAT_MONO_16\n");
+            me->image_depth = 2;
+            break;
+        case ARV_PIXEL_FORMAT_MONO_8:
+            fprintf(stderr, "pixel format ARV_PIXEL_FORMAT_MONO_8\n");
+            me->image_depth = 1;
+            break;
+        default:
+            fprintf(stderr, "pixel format ????\n");
+            break;
+        }
+        assert(me->image_depth != 0);
+
+//        struct timeval tv;
+//        gettimeofday(&tv, NULL);
+//        char filename[256];
+//        sprintf(filename, "%ld_%ld.dat", tv.tv_sec, tv.tv_usec);
+//        int fd = open(filename, O_WRONLY | O_CREAT, 0666);
+//        size_t ret = write(fd, raw, size);
+//        g_assert(size == ret);
+//        fprintf(stderr, "wrote %lu bytes to file %s\n", ret, filename);
+//        close(fd);
+
+        if (me->image_data == NULL && me->image_size == 0) {
+            me->image_data = malloc(me->payload);
+        } else if (me->image_size < me->payload) {
+            me->image_data = realloc(me->image_data, me->payload);
+        }
+        me->image_size = me->payload;
+
+        assert(me->image_data != NULL);
+        assert(me->image_size > 0);
+        memcpy(me->image_data, raw, me->image_size);
+        me->image_updated = true;
 
         /* Always return the buffer to the stream */
 		arv_stream_push_buffer (_stream, buffer);
@@ -147,8 +167,12 @@ void imAravis::new_buffer_cb(ArvStream *_stream, void *_arg)
 //    set_cancel(0);
 }
 
-static void stream_cb (void *user_data, ArvStreamCallbackType type, ArvBuffer *buffer)
+void imAravis::stream_cb(void *user_data, ArvStreamCallbackType type, ArvBuffer *buffer)
 {
+    (void)user_data;
+    (void)type;
+    (void)buffer;
+
 	if (type == ARV_STREAM_CALLBACK_TYPE_INIT) {
 		if (arv_option_realtime) {
 			if (!arv_make_thread_realtime (10))
@@ -213,8 +237,8 @@ bool imAravis::initialize(void) {
 	buffer_count = 0;
 	error_count = 0;
 	transferred = 0;
-	chunks = NULL;
-	chunk_parser = NULL;
+//	chunks = NULL;
+//	chunk_parser = NULL;
 
 //	context = g_option_context_new (NULL);
 //	g_option_context_add_main_entries (context, arv_option_entries, NULL);
@@ -246,9 +270,12 @@ bool imAravis::initialize(void) {
         return false;
     }
 
+//    arv_camera_stop_acquisition(camera, NULL);
+
 //    void (*old_sigint_handler)(int);
-    gint payload;
-    gint x, y, width, height;
+//    gint payload;
+//    gint x, y, width, height;
+    gint x, y;
     gint dx, dy;
     double exposure;
 //    guint64 n_completed_buffers;
@@ -257,23 +284,23 @@ bool imAravis::initialize(void) {
     int gain;
 //    guint software_trigger_source = 0;
 
-    if (arv_option_chunks != NULL) {
-        char *striped_chunks;
+//    if (arv_option_chunks != NULL) {
+//        char *striped_chunks;
 
-        striped_chunks = g_strdup (arv_option_chunks);
-        arv_str_strip (striped_chunks, " ,:;", ',');
-        chunks = g_strsplit_set (striped_chunks, ",", -1);
-        g_free (striped_chunks);
+//        striped_chunks = g_strdup (arv_option_chunks);
+//        arv_str_strip (striped_chunks, " ,:;", ',');
+//        chunks = g_strsplit_set (striped_chunks, ",", -1);
+//        g_free (striped_chunks);
 
-        chunk_parser = arv_camera_create_chunk_parser (camera);
+//        chunk_parser = arv_camera_create_chunk_parser (camera);
 
-        for (i = 0; chunks[i] != NULL; i++) {
-            char *chunk = g_strdup_printf ("Chunk%s", chunks[i]);
+//        for (i = 0; chunks[i] != NULL; i++) {
+//            char *chunk = g_strdup_printf ("Chunk%s", chunks[i]);
 
-            g_free (chunks[i]);
-            chunks[i] = chunk;
-        }
-    }
+//            g_free (chunks[i]);
+//            chunks[i] = chunk;
+//        }
+//    }
 
     arv_camera_set_chunks (camera, arv_option_chunks, NULL);
     arv_camera_set_region (camera, 0, 0, arv_option_width, arv_option_height, NULL);
@@ -281,9 +308,9 @@ bool imAravis::initialize(void) {
     arv_camera_set_exposure_time (camera, arv_option_exposure_time_us, NULL);
     arv_camera_set_gain (camera, arv_option_gain, NULL);
 
-    if (arv_camera_is_uv_device(camera)) {
-        arv_camera_uv_set_bandwidth (camera, arv_option_bandwidth_limit, NULL);
-    }
+//    if (arv_camera_is_uv_device(camera)) {
+//        arv_camera_uv_set_bandwidth (camera, arv_option_bandwidth_limit, NULL);
+//    }
 
     if (arv_camera_is_gv_device (camera)) {
         arv_camera_gv_select_stream_channel (camera, arv_option_gv_stream_channel, NULL);
@@ -294,38 +321,46 @@ bool imAravis::initialize(void) {
                           ARV_GV_STREAM_OPTION_NONE);
     }
 
-    arv_camera_get_region (camera, &x, &y, &width, &height, NULL);
+    arv_camera_get_region (camera, &x, &y, &image_width, &image_height, NULL);
     arv_camera_get_binning (camera, &dx, &dy, NULL);
     exposure = arv_camera_get_exposure_time (camera, NULL);
     payload = arv_camera_get_payload (camera, NULL);
     gain = arv_camera_get_gain (camera, NULL);
 
-    printf ("vendor name           = %s\n", arv_camera_get_vendor_name (camera, NULL));
-    printf ("model name            = %s\n", arv_camera_get_model_name (camera, NULL));
-    printf ("device id             = %s\n", arv_camera_get_device_id (camera, NULL));
-    printf ("image width           = %d\n", width);
-    printf ("image height          = %d\n", height);
-    printf ("horizontal binning    = %d\n", dx);
-    printf ("vertical binning      = %d\n", dy);
-    printf ("payload               = %d bytes\n", payload);
-    printf ("exposure              = %g µs\n", exposure);
-    printf ("gain                  = %d dB\n", gain);
+    vendor = strdup(arv_camera_get_vendor_name (camera, NULL));
+    model = strdup(arv_camera_get_model_name (camera, NULL));
+    device = strdup(arv_camera_get_device_id (camera, NULL));
+
+    // will allocate when image is received
+    image_data = NULL;
+    image_size = 0;
+
+    fprintf(stderr, "vendor name           = %s\n", vendor);
+    fprintf(stderr, "model name            = %s\n", model);
+    fprintf(stderr, "device id             = %s\n", device);
+    fprintf(stderr, "image width           = %d\n", image_width);
+    fprintf(stderr, "image height          = %d\n", image_height);
+    fprintf(stderr, "horizontal binning    = %d\n", dx);
+    fprintf(stderr, "vertical binning      = %d\n", dy);
+    fprintf(stderr, "payload               = %zu bytes\n", payload);
+    fprintf(stderr, "exposure              = %g µs\n", exposure);
+    fprintf(stderr, "gain                  = %d dB\n", gain);
 
     if (arv_camera_is_gv_device (camera)) {
-        printf ("gv n_stream channels  = %d\n", arv_camera_gv_get_n_stream_channels (camera, NULL));
-        printf ("gv current channel    = %d\n", arv_camera_gv_get_current_stream_channel (camera, NULL));
-        printf ("gv packet delay       = %" G_GINT64_FORMAT " ns\n", arv_camera_gv_get_packet_delay (camera, NULL));
-        printf ("gv packet size        = %d bytes\n", arv_camera_gv_get_packet_size (camera, NULL));
+        fprintf(stderr, "gv n_stream channels  = %d\n", arv_camera_gv_get_n_stream_channels (camera, NULL));
+        fprintf(stderr, "gv current channel    = %d\n", arv_camera_gv_get_current_stream_channel (camera, NULL));
+        fprintf(stderr, "gv packet delay       = %" G_GINT64_FORMAT " ns\n", arv_camera_gv_get_packet_delay (camera, NULL));
+        fprintf(stderr, "gv packet size        = %d bytes\n", arv_camera_gv_get_packet_size (camera, NULL));
     }
 
-    if (arv_camera_is_uv_device (camera)) {
-        guint min,max;
+//    if (arv_camera_is_uv_device (camera)) {
+//        guint min,max;
 
-        arv_camera_uv_get_bandwidth_bounds (camera, &min, &max, NULL);
-        printf ("uv bandwidth limit     = %d [%d..%d]\n", arv_camera_uv_get_bandwidth (camera, NULL), min, max);
-    }
+//        arv_camera_uv_get_bandwidth_bounds (camera, &min, &max, NULL);
+//        fprintf(stderr, "uv bandwidth limit     = %d [%d..%d]\n", arv_camera_uv_get_bandwidth (camera, NULL), min, max);
+//    }
 
-    stream = arv_camera_create_stream (camera, stream_cb, NULL, &error);
+    stream = arv_camera_create_stream (camera, imAravis::stream_cb, NULL, &error);
     if (ARV_IS_STREAM (stream)) {
         if (ARV_IS_GV_STREAM (stream)) {
             if (arv_option_auto_socket_buffer)
@@ -366,7 +401,9 @@ bool imAravis::initialize(void) {
 //                                 emit_software_trigger, camera);
         }
 
-        arv_camera_start_acquisition (camera, NULL);
+        arv_camera_stop_acquisition(camera, NULL);
+//        arv_camera_start_acquisition (camera, NULL);
+        acquiring = false;
 
         g_signal_connect (stream, "new-buffer", G_CALLBACK (imAravis::new_buffer_cb), this);
         arv_stream_set_emit_signals (stream, true);
@@ -397,23 +434,25 @@ void imAravis::destroy(void) {
         return;
     }
 
+    arv_camera_stop_acquisition(camera, NULL);
+
     guint64 n_completed_buffers;
     guint64 n_failures;
     guint64 n_underruns;
     arv_stream_get_statistics(stream, &n_completed_buffers, &n_failures, &n_underruns);
-    printf ("Completed buffers = %llu\n", (unsigned long long) n_completed_buffers);
-    printf ("Failures          = %llu\n", (unsigned long long) n_failures);
-    printf ("Underruns         = %llu\n", (unsigned long long) n_underruns);
+    fprintf(stderr, "Completed buffers = %llu\n", (unsigned long long) n_completed_buffers);
+    fprintf(stderr, "Failures          = %llu\n", (unsigned long long) n_failures);
+    fprintf(stderr, "Underruns         = %llu\n", (unsigned long long) n_underruns);
 
     arv_camera_stop_acquisition(camera, NULL);
     arv_stream_set_emit_signals(stream, false);
     g_object_unref(stream);
     g_object_unref(camera);
 
-    if (chunks != NULL) {
-        g_strfreev(chunks);
-    }
+//    if (chunks != NULL) {
+//        g_strfreev(chunks);
+//    }
 
-    g_clear_object(&chunk_parser);
+//    g_clear_object(&chunk_parser);
 }
 
