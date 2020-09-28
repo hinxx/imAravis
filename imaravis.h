@@ -16,6 +16,8 @@ struct imAravis
     bool periodic_task_cb(void);
     bool emit_software_trigger(void);
 
+    void initColorMap(void);
+
 //    void startAcquisition(void) {
 //        arv_camera_start_acquisition(camera, NULL);
 //    }
@@ -47,6 +49,7 @@ struct imAravis
     size_t imageSize;
     bool imageUpdated;
     void *imageData;
+    unsigned char colorMap8[256][3];
 };
 
 #endif // IMARAVIS_H

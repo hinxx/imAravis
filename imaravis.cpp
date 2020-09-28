@@ -199,12 +199,25 @@ imAravis::imAravis() {
     imageData = NULL;
     imageSize = 0;
 
+    initColorMap();
+
     bool ret = initialize();
     assert(ret == true);
 }
 
 imAravis::~imAravis() {
     destroy();
+}
+
+void imAravis::initColorMap(void) {
+    float v;
+    for (int i = 0; i < 256; i++) {
+        v = (float)i / 255.0;
+        // make JET colomap
+        colorMap8[i][0] = (unsigned char)(clamp(colormap_red(v), 0.0, 1.0) * 255.0);
+        colorMap8[i][1] = (unsigned char)(clamp(colormap_green(v), 0.0, 1.0) * 255.0);
+        colorMap8[i][2] = (unsigned char)(clamp(colormap_blue(v), 0.0, 1.0) * 255.0);
+    }
 }
 
 //static void new_buffer_cb(ArvStream *stream, ApplicationData *data)
@@ -327,11 +340,15 @@ void imAravis::new_buffer_cb(ArvStream *_stream, void *_arg)
                 *(dst + 2) = *src;
 #else
                 // apply JET colormap
-                float val = (float)*src / 255.0;
-                vec4 map = colormap(val);
-                *dst = (unsigned char)(map.r * 255.0);
-                *(dst + 1) = (unsigned char)(map.g * 255.0);
-                *(dst + 2) = (unsigned char)(map.b * 255.0);
+//                float val = (float)*src / 255.0;
+//                vec4 map = colormap(val);
+//                *dst = (unsigned char)(map.r * 255.0);
+//                *(dst + 1) = (unsigned char)(map.g * 255.0);
+//                *(dst + 2) = (unsigned char)(map.b * 255.0);
+
+                *(dst + 0) = me->colorMap8[*src][0];
+                *(dst + 1) = me->colorMap8[*src][1];
+                *(dst + 2) = me->colorMap8[*src][2];
 #endif
                 dst += 3;
                 src += 1;
