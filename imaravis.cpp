@@ -325,14 +325,14 @@ void imAravis::new_buffer_cb(ArvStream *_stream, void *_arg)
                 *dst = *src;
                 *(dst + 1) = *src;
                 *(dst + 2) = *src;
-#endif
+#else
                 // apply JET colormap
                 float val = (float)*src / 255.0;
                 vec4 map = colormap(val);
                 *dst = (unsigned char)(map.r * 255.0);
                 *(dst + 1) = (unsigned char)(map.g * 255.0);
                 *(dst + 2) = (unsigned char)(map.b * 255.0);
-
+#endif
                 dst += 3;
                 src += 1;
             }
