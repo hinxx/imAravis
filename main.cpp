@@ -219,6 +219,8 @@ int main(int, char**)
                 arv_camera_stop_acquisition(cam->camera, NULL);
                 cam->acquiring = false;
             }
+            ImGui::SameLine();
+            ImGui::Checkbox("Colormap", &cam->applyColorMap);
 
 //            ImGui::TextColored(ImColor(1, 1, 0), "Statistics");
 //            ImGui::Text("%3d frame%s - %7.3g MiB", cam->buffer_count, cam->buffer_count > 1 ? "s/s" : "/s ", (double) cam->transferred / 1e6);
@@ -249,8 +251,13 @@ int main(int, char**)
 //                } else if (cam->image_depth == 2) {
 //                    glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA, cam->image_width, cam->image_height, 0, GL_RED, GL_UNSIGNED_SHORT, cam->image_data);
 //                }
-                // we expect a RGB, no alpha, type of pixel data
-                glTexImage2D(GL_TEXTURE_2D, 0, GL_RGB, cam->imageWidth, cam->imageHeight, 0, GL_RGB, GL_UNSIGNED_BYTE, cam->imageData);
+                if (! cam->applyColorMap) {
+                    // we expect a R8, no alpha, type of pixel data
+                    glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA, cam->imageWidth, cam->imageHeight, 0, GL_RED, GL_UNSIGNED_BYTE, cam->imageData);
+                } else {
+                    // we expect a RGB, no alpha, type of pixel data
+                    glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA, cam->imageWidth, cam->imageHeight, 0, GL_RGBA, GL_UNSIGNED_BYTE, cam->imageData);
+                }
                 int glError = glGetError();
                 fprintf(stderr, "glGetError() returned 0x%04X\n", glError);
                 assert(glError == 0);

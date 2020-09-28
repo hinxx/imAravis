@@ -50,6 +50,7 @@ struct imAravis
     bool imageUpdated;
     void *imageData;
     unsigned char colorMap8[256][3];
+    bool applyColorMap;
 };
 
 #endif // IMARAVIS_H

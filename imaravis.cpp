@@ -200,6 +200,7 @@ imAravis::imAravis() {
     imageSize = 0;
 
     initColorMap();
+    applyColorMap = true;
 
     bool ret = initialize();
     assert(ret == true);
@@ -278,8 +279,8 @@ void imAravis::new_buffer_cb(ArvStream *_stream, void *_arg)
         assert(imageWidth > 0);
         int imageHeight = arv_buffer_get_image_height(buffer);
         assert(imageHeight > 0);
-        // RGB image
-        size_t size = imageWidth * imageHeight * 3;
+        // RGBA image
+        size_t size = imageWidth * imageHeight * 4;
         size_t payload = 0;
         const void *raw = arv_buffer_get_data(buffer, &payload);
         assert(raw != NULL);
@@ -328,33 +329,38 @@ void imAravis::new_buffer_cb(ArvStream *_stream, void *_arg)
         assert(me->imageSize > 0);
         assert(me->imageSize > payload);
 
-        //memcpy(me->image_data, raw, me->image_size);
-        unsigned char *dst = (unsigned char *)me->imageData;
-        unsigned char *src = (unsigned char *)raw;
-        if (imageDepth == 1) {
-            for (size_t c = 0, r = 0; c < size && r < payload; c += 3, r += 1) {
-#if 0
-                // copy raw pixels verbatim
-                *dst = *src;
-                *(dst + 1) = *src;
-                *(dst + 2) = *src;
-#else
-                // apply JET colormap
-//                float val = (float)*src / 255.0;
-//                vec4 map = colormap(val);
-//                *dst = (unsigned char)(map.r * 255.0);
-//                *(dst + 1) = (unsigned char)(map.g * 255.0);
-//                *(dst + 2) = (unsigned char)(map.b * 255.0);
+        if (! me->applyColorMap) {
+            me->imageSize = payload;
+            memcpy(me->imageData, raw, payload);
+        } else {
+            unsigned char *dst = (unsigned char *)me->imageData;
+            unsigned char *src = (unsigned char *)raw;
+            if (imageDepth == 1) {
+                for (size_t c = 0, r = 0; c < size && r < payload; c += 4, r += 1) {
+    #if 0
+                    // copy raw pixels verbatim
+                    *dst = *src;
+                    *(dst + 1) = *src;
+                    *(dst + 2) = *src;
+    #else
+                    // apply JET colormap
+    //                float val = (float)*src / 255.0;
+    //                vec4 map = colormap(val);
+    //                *dst = (unsigned char)(map.r * 255.0);
+    //                *(dst + 1) = (unsigned char)(map.g * 255.0);
+    //                *(dst + 2) = (unsigned char)(map.b * 255.0);
 
-                *(dst + 0) = me->colorMap8[*src][0];
-                *(dst + 1) = me->colorMap8[*src][1];
-                *(dst + 2) = me->colorMap8[*src][2];
-#endif
-                dst += 3;
-                src += 1;
+                    *(dst + 0) = me->colorMap8[*src][0];
+                    *(dst + 1) = me->colorMap8[*src][1];
+                    *(dst + 2) = me->colorMap8[*src][2];
+                    // alpha need to be 1
+                    *(dst + 3) = 255;
+    #endif
+                    dst += 4;
+                    src += 1;
+                }
             }
         }
-
         me->imageWidth = imageWidth;
         me->imageHeight = imageHeight;
         me->bufferCount++;
