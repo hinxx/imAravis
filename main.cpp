@@ -50,6 +50,44 @@ static void glfw_error_callback(int error, const char* description)
     fprintf(stderr, "Glfw Error %d: %s\n", error, description);
 }
 
+// If you get an error please report on github. You may try different GL context version or GLSL version. See GL<>GLSL version table at the top of this file.
+static bool CheckShader(GLuint handle, const char* desc)
+{
+    GLint status = 0, log_length = 0;
+    glGetShaderiv(handle, GL_COMPILE_STATUS, &status);
+    glGetShaderiv(handle, GL_INFO_LOG_LENGTH, &log_length);
+    if ((GLboolean)status == GL_FALSE)
+        fprintf(stderr, "ERROR: ImGui_ImplOpenGL3_CreateDeviceObjects: failed to compile %s!\n", desc);
+    if (log_length > 1)
+    {
+        ImVector<char> buf;
+        buf.resize((int)(log_length + 1));
+        glGetShaderInfoLog(handle, log_length, NULL, (GLchar*)buf.begin());
+        fprintf(stderr, "%s\n", buf.begin());
+    }
+    return (GLboolean)status == GL_TRUE;
+}
+
+const char* g_glsl_version = "#version 130\n";
+
+// If you get an error please report on GitHub. You may try different GL context version or GLSL version.
+static bool CheckProgram(GLuint handle, const char* desc)
+{
+    GLint status = 0, log_length = 0;
+    glGetProgramiv(handle, GL_LINK_STATUS, &status);
+    glGetProgramiv(handle, GL_INFO_LOG_LENGTH, &log_length);
+    if ((GLboolean)status == GL_FALSE)
+        fprintf(stderr, "ERROR: ImGui_ImplOpenGL3_CreateDeviceObjects: failed to link %s! (with GLSL '%s')\n", desc, g_glsl_version);
+    if (log_length > 1)
+    {
+        ImVector<char> buf;
+        buf.resize((int)(log_length + 1));
+        glGetProgramInfoLog(handle, log_length, NULL, (GLchar*)buf.begin());
+        fprintf(stderr, "%s\n", buf.begin());
+    }
+    return (GLboolean)status == GL_TRUE;
+}
+
 int main(int, char**)
 {
     // Setup window
@@ -142,7 +180,7 @@ int main(int, char**)
 
     // aravis
     imAravis *cam = new imAravis();
-    GLuint imageTexture = 0;
+//    GLuint imageTexture = 0;
 
 //    GLint ExtensionCount;
 //    glGetIntegerv(GL_NUM_EXTENSIONS, &ExtensionCount);
@@ -150,6 +188,132 @@ int main(int, char**)
 //    for (int i = 0; i < ExtensionCount; i++) {
 //        fprintf(stderr, "[%d] %s\n", i, glGetStringi( GL_EXTENSIONS, i));
 //    }
+
+    GLuint shaderHandle = 0, vertHandle = 0, fragHandle = 0;
+
+#if 0
+    const GLchar* vertex_shader =
+        "uniform mat4 ProjMtx;\n"
+        "in vec2 Position;\n"
+        "in vec2 UV;\n"
+        "in vec4 Color;\n"
+        "out vec2 Frag_UV;\n"
+        "out vec4 Frag_Color;\n"
+        "void main()\n"
+        "{\n"
+        "    Frag_UV = UV;\n"
+        "    Frag_Color = Color;\n"
+        "    gl_Position = ProjMtx * vec4(Position.xy,0,1);\n"
+        "}\n";
+
+    const GLchar* fragment_shader =
+        "uniform sampler2D Texture;\n"
+        "in vec2 Frag_UV;\n"
+        "in vec4 Frag_Color;\n"
+        "out vec4 Out_Color;\n"
+        "void main()\n"
+        "{\n"
+        "    Out_Color = Frag_Color * texture(Texture, Frag_UV.st);\n"
+        "}\n";
+#else
+    const GLchar* vertex_shader =
+        "uniform mat4 ProjMtx;\n"
+        "in vec2 Position;\n"
+        "in vec2 UV;\n"
+        "in vec4 Color;\n"
+        "out vec2 Frag_UV;\n"
+        "out vec4 Frag_Color;\n"
+        "void main()\n"
+        "{\n"
+        "    Frag_UV = UV;\n"
+        "    Frag_Color = Color;\n"
+        "    gl_Position = ProjMtx * vec4(Position.xy,0,1);\n"
+        "}\n";
+
+    const GLchar* fragment_shader =
+        "uniform sampler2D Texture;\n"
+        "in vec2 Frag_UV;\n"
+        "in vec4 Frag_Color;\n"
+        "out vec4 Out_Color;\n"
+        "vec4 colormap(float x);\n"
+        "void main()\n"
+        "{\n"
+//        "    Out_Color = Frag_Color * texture(Texture, Frag_UV.st);\n"
+// take red component as index (any r, g, or b should do..)
+            "    Out_Color = colormap(texture(Texture, Frag_UV.st).r);\n"
+        "}\n"
+        "\n"
+        "float colormap_red(float x) {\n"
+        "    if (x < 0.7) {\n"
+        "        return 4.0 * x - 1.5;\n"
+        "    } else {\n"
+        "        return -4.0 * x + 4.5;\n"
+        "    }\n"
+        "}\n"
+        "\n"
+        "float colormap_green(float x) {\n"
+        "    if (x < 0.5) {\n"
+        "        return 4.0 * x - 0.5;\n"
+        "    } else {\n"
+        "        return -4.0 * x + 3.5;\n"
+        "    }\n"
+        "}\n"
+        "\n"
+        "float colormap_blue(float x) {\n"
+        "    if (x < 0.3) {\n"
+        "       return 4.0 * x + 0.5;\n"
+        "    } else {\n"
+        "       return -4.0 * x + 2.5;\n"
+        "    }\n"
+        "}\n"
+        "\n"
+        "vec4 colormap(float x) {\n"
+        "    float r = clamp(colormap_red(x), 0.0, 1.0);\n"
+        "    float g = clamp(colormap_green(x), 0.0, 1.0);\n"
+        "    float b = clamp(colormap_blue(x), 0.0, 1.0);\n"
+        "    return vec4(r, g, b, 1.0);\n"
+        "}\n"
+        "\n";
+#endif
+
+    // Create shaders
+    const GLchar* vertex_shader_with_version[2] = { g_glsl_version, vertex_shader };
+    vertHandle = glCreateShader(GL_VERTEX_SHADER);
+    glShaderSource(vertHandle, 2, vertex_shader_with_version, NULL);
+    glCompileShader(vertHandle);
+    CheckShader(vertHandle, "vertex shader");
+
+    const GLchar* fragment_shader_with_version[2] = { g_glsl_version, fragment_shader };
+    fragHandle = glCreateShader(GL_FRAGMENT_SHADER);
+    glShaderSource(fragHandle, 2, fragment_shader_with_version, NULL);
+    glCompileShader(fragHandle);
+    CheckShader(fragHandle, "fragment shader");
+
+    shaderHandle = glCreateProgram();
+    glAttachShader(shaderHandle, vertHandle);
+    glAttachShader(shaderHandle, fragHandle);
+    glLinkProgram(shaderHandle);
+    CheckProgram(shaderHandle, "shader program");
+
+    // framebuffer configuration
+    // -------------------------
+    unsigned int framebuffer;
+    glGenFramebuffers(1, &framebuffer);
+    glBindFramebuffer(GL_FRAMEBUFFER, framebuffer);
+    // create a color attachment texture
+//    unsigned int textureColorbuffer;
+    GLuint imageTexture = 0;
+    glGenTextures(1, &imageTexture);
+    glBindTexture(GL_TEXTURE_2D, imageTexture);
+    glTexImage2D(GL_TEXTURE_2D, 0, GL_RGB, 1280, 720, 0, GL_RGB, GL_UNSIGNED_BYTE, NULL);
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
+    glFramebufferTexture2D(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT0, GL_TEXTURE_2D, imageTexture, 0);
+    // now that we actually created the framebuffer and added all attachments we want to check if it is actually complete now
+    if (glCheckFramebufferStatus(GL_FRAMEBUFFER) != GL_FRAMEBUFFER_COMPLETE) {
+        fprintf(stderr, "ERROR::FRAMEBUFFER:: Framebuffer is not complete!");
+    }
+    glBindFramebuffer(GL_FRAMEBUFFER, 0);
 
     // Main loop
     while (!glfwWindowShouldClose(window))
@@ -231,19 +395,31 @@ int main(int, char**)
 //            cam->error_count = 0;
 //            cam->transferred = 0;
 
-            if (! imageTexture) {
-                // Create a OpenGL texture identifier
-                glGenTextures(1, &imageTexture);
-                glBindTexture(GL_TEXTURE_2D, imageTexture);
+//            if (! imageTexture) {
+//                // Create a OpenGL texture identifier
+//                glGenTextures(1, &imageTexture);
+//                glBindTexture(GL_TEXTURE_2D, imageTexture);
 
-                // Setup filtering parameters for display
-                // glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
-                // glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
-                glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
-                glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
-                // Upload pixels into texture
-                glPixelStorei(GL_UNPACK_ROW_LENGTH, 0);
-            }
+//                // Setup filtering parameters for display
+//                // glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
+//                // glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
+//                glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
+//                glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
+//                // Upload pixels into texture
+//                glPixelStorei(GL_UNPACK_ROW_LENGTH, 0);
+//            }
+
+            // render
+            // ------
+            // bind to framebuffer and draw scene as we normally would to color texture
+            glBindFramebuffer(GL_FRAMEBUFFER, framebuffer);
+            //glEnable(GL_DEPTH_TEST); // enable depth testing (is disabled for rendering screen-space quad)
+
+            // make sure we clear the framebuffer's content
+            glClearColor(0.1f, 0.1f, 0.1f, 1.0f);
+            //glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
+
+            glUseProgram(shaderHandle);
 
             if (cam->imageUpdated) {
 //                if (cam->image_depth == 1) {
@@ -253,7 +429,8 @@ int main(int, char**)
 //                }
                 if (! cam->applyColorMap) {
                     // we expect a R8, no alpha, type of pixel data
-                    glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA, cam->imageWidth, cam->imageHeight, 0, GL_RED, GL_UNSIGNED_BYTE, cam->imageData);
+                    //glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA, cam->imageWidth, cam->imageHeight, 0, GL_RED, GL_UNSIGNED_BYTE, cam->imageData);
+                    glTexImage2D(GL_TEXTURE_2D, 0, GL_RGB, cam->imageWidth, cam->imageHeight, 0, GL_RED, GL_UNSIGNED_BYTE, cam->imageData);
                 } else {
                     // we expect a RGB, no alpha, type of pixel data
                     glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA, cam->imageWidth, cam->imageHeight, 0, GL_RGBA, GL_UNSIGNED_BYTE, cam->imageData);
@@ -264,11 +441,15 @@ int main(int, char**)
                 cam->imageUpdated = false;
             }
 
-//            ImGui::Begin("OpenGL Raw Image 2");
+            // now bind back to default framebuffer and draw a quad plane with the attached framebuffer color texture
+            glBindFramebuffer(GL_FRAMEBUFFER, 0);
+
             ImGui::Text("pointer = %p", (void*)(intptr_t)imageTexture);
-//            ImGui::Text("size = %d x %d", my_raw_image_width2, my_raw_image_height2);
+            // original image
             ImGui::Image((void*)(intptr_t)imageTexture, ImVec2(cam->imageWidth, cam->imageHeight));
-//            ImGui::End();
+            // FBO image
+
+//            ImGui::Image((void*)(intptr_t)fboTexture, ImVec2(cam->imageWidth, cam->imageHeight));
 
             ImGui::End();
         }

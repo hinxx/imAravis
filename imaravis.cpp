@@ -200,7 +200,7 @@ imAravis::imAravis() {
     imageSize = 0;
 
     initColorMap();
-    applyColorMap = true;
+    applyColorMap = false;
 
     bool ret = initialize();
     assert(ret == true);
@@ -353,7 +353,7 @@ void imAravis::new_buffer_cb(ArvStream *_stream, void *_arg)
                     *(dst + 0) = me->colorMap8[*src][0];
                     *(dst + 1) = me->colorMap8[*src][1];
                     *(dst + 2) = me->colorMap8[*src][2];
-                    // alpha need to be 1
+                    // alpha needs to be 1
                     *(dst + 3) = 255;
     #endif
                     dst += 4;

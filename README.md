@@ -205,3 +205,7 @@ Mentions # 10 ..
 
 10. https://github.com/ocornut/imgui/pull/1639
 
+11. https://gamedev.stackexchange.com/questions/150214/render-in-a-imgui-window
+
+12. https://learnopengl.com/Advanced-OpenGL/Framebuffers
+
