@@ -442,8 +442,12 @@ void imAravis::destroy(void) {
 //    if (software_trigger_source > 0)
 //        g_source_remove(software_trigger_source);
 
-    if (! camera) {
+    if (! ARV_IS_CAMERA(camera)) {
         return;
+    }
+
+    if (ARV_IS_STREAM(stream)) {
+        arv_stream_set_emit_signals(stream, false);
     }
 
     arv_camera_stop_acquisition(camera, NULL);
@@ -456,8 +460,12 @@ void imAravis::destroy(void) {
     fprintf(stderr, "Failures          = %llu\n", (unsigned long long) n_failures);
     fprintf(stderr, "Underruns         = %llu\n", (unsigned long long) n_underruns);
 
-    arv_camera_stop_acquisition(camera, NULL);
-    arv_stream_set_emit_signals(stream, false);
-    g_object_unref(stream);
-    g_object_unref(camera);
+    g_clear_object(&stream);
+    g_clear_object(&camera);
+
+    free(model);
+    free(vendor);
+    free(device);
+
+    arv_shutdown();
 }
