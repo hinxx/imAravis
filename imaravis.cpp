@@ -285,16 +285,16 @@ void imAravis::new_buffer_cb(ArvStream *_stream, void *_arg)
         const void *raw = arv_buffer_get_data(buffer, &payload);
         assert(raw != NULL);
         int pixelFormat = arv_buffer_get_image_pixel_format(buffer);
-        fprintf(stderr, "raw image %lu bytes, pixel format %08X\n", payload, pixelFormat);
+//        fprintf(stderr, "raw image %lu bytes, pixel format %08X\n", payload, pixelFormat);
 
         int imageDepth = 0;
         switch (pixelFormat) {
-        case ARV_PIXEL_FORMAT_MONO_16:
-            fprintf(stderr, "pixel format ARV_PIXEL_FORMAT_MONO_16\n");
-            imageDepth = 2;
-            break;
+//        case ARV_PIXEL_FORMAT_MONO_16:
+//            fprintf(stderr, "pixel format ARV_PIXEL_FORMAT_MONO_16\n");
+//            imageDepth = 2;
+//            break;
         case ARV_PIXEL_FORMAT_MONO_8:
-            fprintf(stderr, "pixel format ARV_PIXEL_FORMAT_MONO_8\n");
+//            fprintf(stderr, "pixel format ARV_PIXEL_FORMAT_MONO_8\n");
             imageDepth = 1;
             break;
         default:
@@ -302,7 +302,7 @@ void imAravis::new_buffer_cb(ArvStream *_stream, void *_arg)
             break;
         }
         assert(imageDepth != 0);
-        fprintf(stderr, "RGB image %lu bytes, pixel format RGB\n", size);
+//        fprintf(stderr, "RGB image %lu bytes, pixel format RGB\n", size);
 
         //struct timeval tv;
         //gettimeofday(&tv, NULL);

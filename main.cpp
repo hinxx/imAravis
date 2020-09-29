@@ -215,7 +215,7 @@ int main(int, char**)
         "{\n"
         "    Out_Color = Frag_Color * texture(Texture, Frag_UV.st);\n"
         "}\n";
-#elif 1
+#elif 0
     const GLchar* vertex_shader =
         "uniform mat4 ProjMtx;\n"
         "in vec2 Position;\n"
@@ -275,7 +275,8 @@ int main(int, char**)
         "    return vec4(r, g, b, 1.0);\n"
         "}\n"
         "\n";
-#else
+#elif 0
+    // this works with the TRIANGLE example
     const GLchar* vertex_shader =
         "in vec3 aPos;\n" // the position variable has attribute position 0
         "\n"
@@ -296,9 +297,34 @@ int main(int, char**)
         "{\n"
         "    FragColor = vertexColor;\n"
         "}\n";
+#else
+    // this works with the TRIANGLE example
+    const GLchar* vertex_shader =
+        "in vec3 aPos;\n"           // attributes 0
+        "in vec2 aTexCoords;\n"     // attributes 1
+//        "out vec4 vertexColor;\n"   // for fragment shader
+        "out vec2 TexCoords;\n"
+        "void main()\n"
+        "{\n"
+        "    gl_Position = vec4(aPos, 1.0);\n"              // see how we directly give a vec3 to vec4's constructor
+        //"    gl_Position = vec4(aPos.x, aPos.y, 0.0, 1.0);\n"
+        //"    vertexColor = vec4(0.5, 0.0, 0.0, 1.0);\n"   // set the output variable to a dark-red color
+        "TexCoords = aTexCoords;\n"
+        "}\n";
+
+    const GLchar* fragment_shader =
+        "out vec4 FragColor;\n"
+        "in vec2 TexCoords;\n"
+//        "in vec4 vertexColor;\n" // the input variable from the vertex shader (same name and same type)
+        "uniform sampler2D screenTexture;\n"
+        "void main()\n"
+        "{\n"
+//        "    FragColor = vertexColor;\n"
+        "FragColor = texture(screenTexture, TexCoords);\n"
+        "}\n";
 #endif
 
-#if 0
+#if 1
     //TRIANGLE CREATION//
     float Tvertices[] = {
         -0.5f, -0.5f, 0.0f,
@@ -306,7 +332,14 @@ int main(int, char**)
          0.0f,  0.5f, 0.0f
     };
 
-    unsigned int Tvbo, Tvao;
+    float Tvertices2[] = {
+        1.0f,   1.0f,
+        1.0f,   0.0f,
+        0.0f,   0.0f,
+        0.0f,   1.0f
+    };
+
+    unsigned int Tvbo, Tvbo2, Tvao;
     glGenVertexArrays(1, &Tvao);
     glGenBuffers(1, &Tvbo);
     glBindVertexArray(Tvao);
@@ -315,8 +348,27 @@ int main(int, char**)
     glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, 3 * sizeof(float), (void*)0);
     glEnableVertexAttribArray(0);
 
+    glGenBuffers(1, &Tvbo2);
+    glBindBuffer(GL_ARRAY_BUFFER, Tvbo2);
+    glBufferData(GL_ARRAY_BUFFER, sizeof(Tvertices2), Tvertices2, GL_STATIC_DRAW);
+    glVertexAttribPointer(1, 2, GL_FLOAT, GL_FALSE, 2 * sizeof(float), (void*)0);
+    glEnableVertexAttribArray(1);
+
     glBindBuffer(GL_ARRAY_BUFFER, 0);
     glBindVertexArray(0);
+
+//    unsigned int Tvbo2, Tvao2;
+//    glGenVertexArrays(1, &Tvao2);
+//    glGenBuffers(1, &Tvbo2);
+//    glBindVertexArray(Tvao2);
+//    glBindBuffer(GL_ARRAY_BUFFER, Tvbo2);
+//    glBufferData(GL_ARRAY_BUFFER, sizeof(Tvertices2), Tvertices2, GL_STATIC_DRAW);
+//    glVertexAttribPointer(1, 2, GL_FLOAT, GL_FALSE, 2 * sizeof(float), (void*)0);
+//    glEnableVertexAttribArray(1);
+
+//    glBindBuffer(GL_ARRAY_BUFFER, 0);
+//    glBindVertexArray(0);
+
 #endif
 
     // Create shaders
@@ -464,9 +516,11 @@ int main(int, char**)
             //glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
 
             glUseProgram(shaderHandle);
+
 #if 1
             if (cam->imageUpdated) {
-                glBindTexture(GL_TEXTURE_2D, textureColorbuffer);
+                // this is not not, even though we get the image on screen..
+                //glBindTexture(GL_TEXTURE_2D, textureColorbuffer);
 
 //                if (cam->image_depth == 1) {
 //                    glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA, cam->image_width, cam->image_height, 0, GL_RED, GL_UNSIGNED_BYTE, cam->image_data);
@@ -475,14 +529,17 @@ int main(int, char**)
 //                }
                 if (! cam->applyColorMap) {
                     // we expect a R8, no alpha, type of pixel data
-                    glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA, cam->imageWidth, cam->imageHeight, 0, GL_RED, GL_UNSIGNED_BYTE, cam->imageData);
+//                    glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA, cam->imageWidth, cam->imageHeight, 0, GL_RED, GL_UNSIGNED_BYTE, cam->imageData);
                     //glTexImage2D(GL_TEXTURE_2D, 0, GL_RGB, cam->imageWidth, cam->imageHeight, 0, GL_RED, GL_UNSIGNED_BYTE, cam->imageData);
+                    glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA, cam->imageWidth, cam->imageHeight, 0, GL_GREEN, GL_UNSIGNED_BYTE, cam->imageData);
                 } else {
                     // we expect a RGB, no alpha, type of pixel data
                     glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA, cam->imageWidth, cam->imageHeight, 0, GL_RGBA, GL_UNSIGNED_BYTE, cam->imageData);
                 }
                 int glError = glGetError();
-                fprintf(stderr, "glGetError() returned 0x%04X\n", glError);
+                if (glError != GL_NO_ERROR) {
+                    fprintf(stderr, "glGetError() returned 0x%04X\n", glError);
+                }
                 assert(glError == 0);
 
 //                glDrawArrays(GL_POINTS, 0, cam->imageSize);
@@ -492,8 +549,9 @@ int main(int, char**)
 
                 cam->imageUpdated = false;
             }
-#else
+//#else
             glBindVertexArray(Tvao);
+            glBindTexture(GL_TEXTURE_2D, imageTexture);
             glDrawArrays(GL_TRIANGLES, 0, 3);
 
 #endif
