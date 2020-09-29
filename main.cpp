@@ -189,6 +189,11 @@ int main(int, char**)
 //        fprintf(stderr, "[%d] %s\n", i, glGetStringi( GL_EXTENSIONS, i));
 //    }
 
+    int preferred_format = 0;
+    glGetInternalformativ(GL_TEXTURE_2D, GL_RGBA, GL_TEXTURE_IMAGE_FORMAT, 1, &preferred_format);
+    fprintf(stderr, "preferred internal format %X\n", preferred_format);
+    // preferred internal format 1908 == GL_RGBA
+
     GLuint shaderHandle = 0, vertHandle = 0, fragHandle = 0;
 
 #if 0
@@ -475,7 +480,7 @@ int main(int, char**)
     unsigned int textureColorbuffer;
     glGenTextures(1, &textureColorbuffer);
     glBindTexture(GL_TEXTURE_2D, textureColorbuffer);
-    glTexImage2D(GL_TEXTURE_2D, 0, GL_RGB, 1280, 720, 0, GL_RGB, GL_UNSIGNED_BYTE, NULL);
+    glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA, 1280, 720, 0, GL_RGBA, GL_UNSIGNED_BYTE, NULL);
     glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
     glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
     glFramebufferTexture2D(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT0, GL_TEXTURE_2D, textureColorbuffer, 0);
@@ -654,7 +659,11 @@ int main(int, char**)
                 totalBufferCount += bufferCount;
                 errorCount += cam->errorCount;
                 transferred = (double) cam->transferred / 1e6;
-                cam->periodic_task_cb();
+//                cam->periodic_task_cb();
+                // reset the stats until next timeout (1 s)
+                cam->bufferCount = 0;
+                cam->errorCount = 0;
+                cam->transferred = 0;
                 timeout = ImGui::GetTime() + 1.0;
             }
             ImGui::Text("frames/s  %d", bufferCount);
