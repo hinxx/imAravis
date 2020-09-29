@@ -1,6 +1,17 @@
 # imAravis
 Dear ImGui aravis interface
 
+## fake camera
+
+With debug output:
+
+	$ ./aravis/bin/arv-fake-gv-camera-0.8 -s GV02 -d all -g aravis/share/aravis-0.8/arv-fake-camera.xml 
+
+Normal:
+	
+	$ ./aravis/bin/arv-fake-gv-camera-0.8 -s GV02 -g aravis/share/aravis-0.8/arv-fake-camera.xml 
+
+
 ## How to do own GL drawing?
 
 To draw color gradient for greyscale images from the detector I would need a custom shader under openGL 3.0 (that is what I think I need).

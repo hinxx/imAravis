@@ -317,10 +317,45 @@ int main(int, char**)
         "in vec2 TexCoords;\n"
 //        "in vec4 vertexColor;\n" // the input variable from the vertex shader (same name and same type)
         "uniform sampler2D screenTexture;\n"
+        "vec4 colormap(float x);\n"
         "void main()\n"
         "{\n"
 //        "    FragColor = vertexColor;\n"
-        "FragColor = texture(screenTexture, TexCoords);\n"
+//        "    FragColor = texture(screenTexture, TexCoords);\n"
+         // take red component as index (any r, g, or b should do..)
+        "    FragColor = colormap(texture(screenTexture, TexCoords).g);\n"
+        "}\n"
+        "\n"
+        // JET color map
+        "float colormap_red(float x) {\n"
+        "    if (x < 0.7) {\n"
+        "        return 4.0 * x - 1.5;\n"
+        "    } else {\n"
+        "        return -4.0 * x + 4.5;\n"
+        "    }\n"
+        "}\n"
+        "\n"
+        "float colormap_green(float x) {\n"
+        "    if (x < 0.5) {\n"
+        "        return 4.0 * x - 0.5;\n"
+        "    } else {\n"
+        "        return -4.0 * x + 3.5;\n"
+        "    }\n"
+        "}\n"
+        "\n"
+        "float colormap_blue(float x) {\n"
+        "    if (x < 0.3) {\n"
+        "       return 4.0 * x + 0.5;\n"
+        "    } else {\n"
+        "       return -4.0 * x + 2.5;\n"
+        "    }\n"
+        "}\n"
+        "\n"
+        "vec4 colormap(float x) {\n"
+        "    float r = clamp(colormap_red(x), 0.0, 1.0);\n"
+        "    float g = clamp(colormap_green(x), 0.0, 1.0);\n"
+        "    float b = clamp(colormap_blue(x), 0.0, 1.0);\n"
+        "    return vec4(r, g, b, 1.0);\n"
         "}\n";
 #endif
 
@@ -451,6 +486,8 @@ int main(int, char**)
     glBindFramebuffer(GL_FRAMEBUFFER, 0);
 
     GLuint imageTexture = 0;
+    double timeout = ImGui::GetTime() + 1.0;
+    static float frameRate = arv_camera_get_frame_rate(cam->camera, NULL);
 
     // Main loop
     while (!glfwWindowShouldClose(window))
@@ -546,20 +583,21 @@ int main(int, char**)
                 glPixelStorei(GL_UNPACK_ROW_LENGTH, 0);
             }
 
-            // render
-            // ------
-            // bind to framebuffer and draw scene as we normally would to color texture
-            glBindFramebuffer(GL_FRAMEBUFFER, framebuffer);
-            //glEnable(GL_DEPTH_TEST); // enable depth testing (is disabled for rendering screen-space quad)
-
-            // make sure we clear the framebuffer's content
-            glClearColor(0.1f, 0.1f, 0.1f, 1.0f);
-            //glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
-
-            glUseProgram(shaderHandle);
-
 #if 1
             if (cam->imageUpdated) {
+
+                // render
+                // ------
+                // bind to framebuffer and draw scene as we normally would to color texture
+                glBindFramebuffer(GL_FRAMEBUFFER, framebuffer);
+                //glEnable(GL_DEPTH_TEST); // enable depth testing (is disabled for rendering screen-space quad)
+
+                // make sure we clear the framebuffer's content
+                glClearColor(0.1f, 0.1f, 0.1f, 1.0f);
+                //glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
+
+                glUseProgram(shaderHandle);
+
                 // this is not not, even though we get the image on screen..
                 //glBindTexture(GL_TEXTURE_2D, textureColorbuffer);
 
@@ -589,24 +627,45 @@ int main(int, char**)
 //                assert(glError == 0);
 
                 cam->imageUpdated = false;
-            }
 //#else
-            // triangle
-//            glBindVertexArray(Tvao);
-//            glBindTexture(GL_TEXTURE_2D, imageTexture);
-//            glDrawArrays(GL_TRIANGLES, 0, 3);
+                // triangle
+//                glBindVertexArray(Tvao);
+//                glBindTexture(GL_TEXTURE_2D, imageTexture);
+//                glDrawArrays(GL_TRIANGLES, 0, 3);
 
-            // rectangle
-            glBindVertexArray(vao);
-            glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, EBO);
-            glBindTexture(GL_TEXTURE_2D, imageTexture);
-            glDrawElements(GL_TRIANGLES, 6, GL_UNSIGNED_INT, 0);
+                // rectangle
+                glBindVertexArray(vao);
+                glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, EBO);
+                glBindTexture(GL_TEXTURE_2D, imageTexture);
+                glDrawElements(GL_TRIANGLES, 6, GL_UNSIGNED_INT, 0);
 
+                // now bind back to default framebuffer and draw a quad plane with the attached framebuffer color texture
+                glBindFramebuffer(GL_FRAMEBUFFER, 0);
 #endif
-            // now bind back to default framebuffer and draw a quad plane with the attached framebuffer color texture
-            glBindFramebuffer(GL_FRAMEBUFFER, 0);
+            }
 
             ImGui::Text("pointer = %p", (void*)(intptr_t)imageTexture);
+            static int bufferCount = 0;
+            static int totalBufferCount = 0;
+            static int errorCount = 0;
+            static double transferred = 0;
+            if (timeout <= ImGui::GetTime()) {
+                bufferCount = cam->bufferCount;
+                totalBufferCount += bufferCount;
+                errorCount += cam->errorCount;
+                transferred = (double) cam->transferred / 1e6;
+                cam->periodic_task_cb();
+                timeout = ImGui::GetTime() + 1.0;
+            }
+            ImGui::Text("frames/s  %d", bufferCount);
+            ImGui::Text("transfer  %.3g MiB/s", transferred);
+            ImGui::Text("completed %d", totalBufferCount);
+            ImGui::Text("error     %d", errorCount);
+
+            if (ImGui::SliderFloat("rate", &frameRate, 0.1f, 60.0f)) {
+                arv_camera_set_frame_rate(cam->camera, frameRate, NULL);
+            }
+
             // original image
             //ImGui::Image((void*)(intptr_t)imageTexture, ImVec2(cam->imageWidth, cam->imageHeight));
 
