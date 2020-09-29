@@ -218,6 +218,24 @@ void imAravis::initColorMap(void) {
         colorMap8[i][0] = (unsigned char)(clamp(colormap_red(v), 0.0, 1.0) * 255.0);
         colorMap8[i][1] = (unsigned char)(clamp(colormap_green(v), 0.0, 1.0) * 255.0);
         colorMap8[i][2] = (unsigned char)(clamp(colormap_blue(v), 0.0, 1.0) * 255.0);
+
+//        colorMapFloat[i][0] = clamp(colormap_red(v), 0.0, 1.0);
+//        colorMapFloat[i][1] = clamp(colormap_green(v), 0.0, 1.0);
+//        colorMapFloat[i][2] = clamp(colormap_blue(v), 0.0, 1.0);
+//        fprintf(stderr, "R %f, G %f, B %f\n", colorMapFloat[i][0], colorMapFloat[i][1], colorMapFloat[i][2]);
+
+//        colorMap[i] =  0.2126 * clamp(colormap_red(v), 0.0, 1.0) +
+//                        0.7152 * clamp(colormap_green(v), 0.0, 1.0) +
+//                        0.0722 * clamp(colormap_blue(v), 0.0, 1.0);
+//        colorMap[i] =  colorMap8[i][0] +
+//                       (colorMap8[i][1] << 8) +
+//                       (colorMap8[i][2] << 16) +
+//                       (255 << 24);
+        colorMap[i][0] = colorMap8[i][0];
+        colorMap[i][1] = colorMap8[i][1];
+        colorMap[i][2] = colorMap8[i][2];
+        colorMap[i][3] = 255;
+        fprintf(stderr, "RGBA %3d %3d %3d %3d\n", colorMap[i][0], colorMap[i][1], colorMap[i][2], colorMap[i][3]);
     }
 }
 

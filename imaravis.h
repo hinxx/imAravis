@@ -51,6 +51,8 @@ struct imAravis
     void *imageData;
     unsigned char colorMap8[256][3];
     bool applyColorMap;
+    float colorMapFloat[256][3];
+    unsigned char colorMap[256][4];
 };
 
 #endif // IMARAVIS_H
