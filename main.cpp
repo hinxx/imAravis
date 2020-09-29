@@ -8,6 +8,7 @@
 #include <stdio.h>
 
 #include "imaravis.h"
+#include "viewer.h"
 
 // About Desktop OpenGL function loaders:
 //  Modern desktop OpenGL doesn't have a standard portable header file to load OpenGL function pointers.
@@ -180,6 +181,7 @@ int main(int, char**)
 
     // aravis
     imAravis *cam = new imAravis();
+    Viewer *viewer = new Viewer();
 
 //    GLint ExtensionCount;
 //    glGetIntegerv(GL_NUM_EXTENSIONS, &ExtensionCount);
@@ -399,6 +401,94 @@ int main(int, char**)
         {
             ImGui::Begin("Aravis Window");
 
+            // generate list of cameras
+            if (ImGui::Button("update device list")) {
+                viewer->clearCameraList();
+                unsigned int n_devices;
+                unsigned int i;
+                arv_update_device_list ();
+                n_devices = arv_get_n_devices ();
+                for (i = 0; i < n_devices; i++) {
+                    fprintf(stderr, "[%d] protocol %s\n", i, arv_get_device_protocol(i));
+                    fprintf(stderr, "     device   %s\n", arv_get_device_id(i));
+                    fprintf(stderr, "     vendor   %s\n", arv_get_device_vendor(i));
+                    fprintf(stderr, "     model    %s\n", arv_get_device_model(i));
+                    fprintf(stderr, "     serial # %s\n", arv_get_device_serial_nbr(i));
+                    fprintf(stderr, "     phys. ID %s\n", arv_get_device_physical_id(i));
+                    viewer->addCamera(i, arv_get_device_protocol(i), arv_get_device_id(i),
+                                      arv_get_device_vendor(i), arv_get_device_model(i),
+                                      arv_get_device_serial_nbr(i), arv_get_device_physical_id(i));
+                }
+            }
+
+            // show list of cameras
+            if (! viewer->cameras.empty()) {
+                ImGui::Text("Found %zu devices", viewer->cameras.size());
+                ImGui::Columns(7, "aravis-devices");
+                ImGui::Separator();
+                ImGui::Text("ID"); ImGui::NextColumn();
+                ImGui::Text("Device"); ImGui::NextColumn();
+                ImGui::Text("Vendor"); ImGui::NextColumn();
+                ImGui::Text("Model"); ImGui::NextColumn();
+                ImGui::Text("Serial nr."); ImGui::NextColumn();
+                ImGui::Text("Protocol"); ImGui::NextColumn();
+                ImGui::Text("Physical ID"); ImGui::NextColumn();
+                ImGui::Separator();
+                unsigned int selected = (viewer->camera) ? viewer->camera->index : -1;
+                for (size_t i = 0; i < viewer->cameras.size(); i++) {
+                    Camera *cam = viewer->cameras[i];
+                    char label[32];
+                    sprintf(label, "%04u", cam->index);
+                    if (ImGui::Selectable(label, selected == cam->index, ImGuiSelectableFlags_SpanAllColumns)){
+                        fprintf(stderr, "clicked on index %d\n", cam->index);
+                        viewer->selectCamera(cam->index);
+                    }
+                    ImGui::NextColumn();
+                    ImGui::Text("%s", cam->deviceId); ImGui::NextColumn();
+                    ImGui::Text("%s", cam->vendor); ImGui::NextColumn();
+                    ImGui::Text("%s", cam->model); ImGui::NextColumn();
+                    ImGui::Text("%s", cam->serialNumber); ImGui::NextColumn();
+                    ImGui::Text("%s", cam->protocol); ImGui::NextColumn();
+                    ImGui::Text("%s", cam->physicalId); ImGui::NextColumn();
+                }
+                ImGui::Columns(1);
+            } else {
+                ImGui::Text("No devices.");
+            }
+
+            ImGui::Separator();
+
+            // selected camera info
+            Camera *cam = viewer->camera;
+            if (cam && cam->connected) {
+                ImGui::Text("Device %s", cam->deviceId);
+
+                ImGui::Text("Binning available %s", cam->binningAvailable ? "YES" : "NO");
+                if (cam->binningAvailable) {
+                    ImGui::Text("Binning X min %d, max %d, step %d", cam->xBinning.min, cam->xBinning.max, cam->xBinning.step);
+                    ImGui::Text("Binning Y min %d, max %d, step %d", cam->yBinning.min, cam->yBinning.max, cam->yBinning.step);
+                }
+
+                ImGui::Text("Offset X min %d, max %d, step %d", cam->xOffset.min, cam->xOffset.max, cam->xOffset.step);
+                ImGui::Text("Offset Y min %d, max %d, step %d", cam->yOffset.min, cam->yOffset.max, cam->yOffset.step);
+                ImGui::Text("Size X min %d, max %d, step %d", cam->xSize.min, cam->xSize.max, cam->xSize.step);
+                ImGui::Text("Size Y min %d, max %d, step %d", cam->ySize.min, cam->ySize.max, cam->ySize.step);
+
+                ImGui::Text("Number of pixels formats %d", cam->numPixelFormats);
+                for (unsigned int i = 0; i < cam->numPixelFormats; i++) {
+                    ImGui::Text("%s (0x%08lX)", cam->pixelFormatStrings[i], cam->pixelFormats[i]);
+                }
+                ImGui::Text("Selected pixels format %s", cam->pixelFormatString);
+            } else {
+                ImGui::Text("Device not connected.");
+            }
+
+            ImGui::End();
+        }
+
+        {
+            ImGui::Begin("Image Window");
+
             ImGui::Text("Device info   : %s %s %s", cam->vendor, cam->model, cam->device);
             ImGui::Text("Image size    : %d x %d px, %d bpp", cam->imageWidth, cam->imageHeight, 24);
             ImGui::Text("Image payload : %zu bytes", cam->imageSize);
@@ -529,6 +619,7 @@ int main(int, char**)
 
     // aravis
     delete cam;
+    delete viewer;
 
     // Cleanup
     ImGui_ImplOpenGL3_Shutdown();

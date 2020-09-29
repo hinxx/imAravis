@@ -3,8 +3,7 @@
 
 #include <arv.h>
 
-struct imAravis
-{
+struct imAravis {
     imAravis();
     ~imAravis();
 

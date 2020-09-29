@@ -78,6 +78,7 @@ aravis/include/aravis-0.8/arvuvstream.h
 aravis/include/aravis-0.8/arvversion.h
 aravis/include/aravis-0.8/arvxmlschema.h
 aravis/include/aravis-0.8/arvzip.h
+debug.h
 imAravis.cflags
 imAravis.cxxflags
 imaravis.cpp
@@ -101,3 +102,5 @@ imgui/libs/gl3w/GL/gl3w.c
 imgui/libs/gl3w/GL/gl3w.h
 imgui/libs/gl3w/GL/glcorearb.h
 main.cpp
+viewer.cpp
+viewer.h
