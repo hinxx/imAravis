@@ -67,70 +67,7 @@ struct vec4
         , w(a3)
     {
     }
-/*
-    double operator[](size_t index) const
-    {
-        assert(index < 4);
-        if (index < 2) {
-            if (index < 1) {
-                return x;
-            } else {
-                return y;
-            }
-        } else {
-            if (index < 3) {
-                return z;
-            } else {
-                return w;
-            }
-        }
-    }
 
-    double& operator[](size_t index)
-    {
-        assert(index < 4);
-        if (index < 2) {
-            if (index < 1) {
-                return x;
-            } else {
-                return y;
-            }
-        } else {
-            if (index < 3) {
-                return z;
-            } else {
-                return w;
-            }
-        }
-    }
-
-    bool operator==(vec4 const& o) const
-    {
-        return x == o.x && y == o.y && z == o.z && w == o.w;
-    }
-
-    vec4 operator*(double v) const
-    {
-        return vec4(r * v, g * v, b * v, a * v);
-    }
-
-    vec4 operator+(vec4 const& v) const
-    {
-        return vec4(r + v.r, g + v.g, b + v.b, a + v.a);
-    }
-
-    std::string to_string() const
-    {
-        return
-            std::string("{") +
-            std::to_string(x) + std::string(",") +
-            std::to_string(y) + std::string(",") +
-            std::to_string(z) + std::string(",") +
-            std::to_string(w) +
-            std::string("}");
-    }
-
-*/
     union {
         double r;
         double x;
@@ -195,12 +132,10 @@ vec4 colormap(float x) {
 
 imAravis::imAravis() {
     imageUpdated = false;
-//    imageDataRaw = NULL;
     imageData = NULL;
     imageSize = 0;
 
     initColorMap();
-    applyColorMap = false;
 
     bool ret = initialize();
     assert(ret == true);
@@ -215,31 +150,14 @@ void imAravis::initColorMap(void) {
     for (int i = 0; i < 256; i++) {
         v = (float)i / 255.0;
         // make JET colomap
-        colorMap8[i][0] = (unsigned char)(clamp(colormap_red(v), 0.0, 1.0) * 255.0);
-        colorMap8[i][1] = (unsigned char)(clamp(colormap_green(v), 0.0, 1.0) * 255.0);
-        colorMap8[i][2] = (unsigned char)(clamp(colormap_blue(v), 0.0, 1.0) * 255.0);
-
-//        colorMapFloat[i][0] = clamp(colormap_red(v), 0.0, 1.0);
-//        colorMapFloat[i][1] = clamp(colormap_green(v), 0.0, 1.0);
-//        colorMapFloat[i][2] = clamp(colormap_blue(v), 0.0, 1.0);
-//        fprintf(stderr, "R %f, G %f, B %f\n", colorMapFloat[i][0], colorMapFloat[i][1], colorMapFloat[i][2]);
-
-//        colorMap[i] =  0.2126 * clamp(colormap_red(v), 0.0, 1.0) +
-//                        0.7152 * clamp(colormap_green(v), 0.0, 1.0) +
-//                        0.0722 * clamp(colormap_blue(v), 0.0, 1.0);
-//        colorMap[i] =  colorMap8[i][0] +
-//                       (colorMap8[i][1] << 8) +
-//                       (colorMap8[i][2] << 16) +
-//                       (255 << 24);
-        colorMap[i][0] = colorMap8[i][0];
-        colorMap[i][1] = colorMap8[i][1];
-        colorMap[i][2] = colorMap8[i][2];
+        colorMap[i][0] = (unsigned char)(clamp(colormap_red(v), 0.0, 1.0) * 255.0);
+        colorMap[i][1] = (unsigned char)(clamp(colormap_green(v), 0.0, 1.0) * 255.0);
+        colorMap[i][2] = (unsigned char)(clamp(colormap_blue(v), 0.0, 1.0) * 255.0);
         colorMap[i][3] = 255;
-        fprintf(stderr, "RGBA %3d %3d %3d %3d\n", colorMap[i][0], colorMap[i][1], colorMap[i][2], colorMap[i][3]);
+        // fprintf(stderr, "RGBA %3d %3d %3d %3d\n", colorMap[i][0], colorMap[i][1], colorMap[i][2], colorMap[i][3]);
     }
 }
 
-//static void new_buffer_cb(ArvStream *stream, ApplicationData *data)
 // Called by aravis when a new buffer is produced
 void imAravis::new_buffer_cb(ArvStream *_stream, void *_arg)
 {
@@ -258,140 +176,70 @@ void imAravis::new_buffer_cb(ArvStream *_stream, void *_arg)
         return;
     }
 
-//	if (buffer != NULL) {
-//		if (arv_buffer_get_status(buffer) == ARV_BUFFER_STATUS_SUCCESS) {
-//			size_t size = 0;
-//			me->buffer_count++;
-//			arv_buffer_get_data(buffer, &size);
-//			me->transferred += size;
-//		} else {
-//			me->error_count++;
-//		}
+    // buffer contains our image
 
-//		if (arv_buffer_has_chunks (buffer) && me->chunks != NULL) {
-//			int i;
+    int imageWidth = arv_buffer_get_image_width(buffer);
+    assert(imageWidth > 0);
+    int imageHeight = arv_buffer_get_image_height(buffer);
+    assert(imageHeight > 0);
+    size_t size = 0;
+    const void *raw = arv_buffer_get_data(buffer, &size);
+    assert(raw != NULL);
+    int pixelFormat = arv_buffer_get_image_pixel_format(buffer);
+    // fprintf(stderr, "raw image %lu bytes, pixel format %08X\n", payload, pixelFormat);
 
-//			for (i = 0; me->chunks[i] != NULL; i++) {
-//				gint64 integer_value;
-//				GError *error = NULL;
+    int imageDepth = 0;
+    switch (pixelFormat) {
+    case ARV_PIXEL_FORMAT_MONO_16:
+        // fprintf(stderr, "pixel format ARV_PIXEL_FORMAT_MONO_16\n");
+        imageDepth = 2;
+        break;
+    case ARV_PIXEL_FORMAT_MONO_8:
+        // fprintf(stderr, "pixel format ARV_PIXEL_FORMAT_MONO_8\n");
+        imageDepth = 1;
+        break;
+    default:
+        fprintf(stderr, "unhandled pixel format 0x%X\n", pixelFormat);
+        break;
+    }
+    assert(imageDepth != 0);
+    // fprintf(stderr, "RGB image %lu bytes, pixel format RGB\n", size);
 
-//				integer_value = arv_chunk_parser_get_integer_value (me->chunk_parser, buffer, me->chunks[i], &error);
-//				if (error == NULL)
-//					fprintf(stderr, "%s = %" G_GINT64_FORMAT "\n", me->chunks[i], integer_value);
-//				else {
-//					double float_value;
+    //struct timeval tv;
+    //gettimeofday(&tv, NULL);
+    //char filename[256];
+    //sprintf(filename, "%ld_%ld.dat", tv.tv_sec, tv.tv_usec);
+    //int fd = open(filename, O_WRONLY | O_CREAT, 0666);
+    //size_t ret = write(fd, raw, size);
+    //g_assert(size == ret);
+    //fprintf(stderr, "wrote %lu bytes to file %s\n", ret, filename);
+    //close(fd);
 
-//					g_clear_error (&error);
-//					float_value = arv_chunk_parser_get_float_value (me->chunk_parser, buffer, me->chunks[i], &error);
-//					if (error == NULL)
-//						printf ("%s = %g\n", me->chunks[i], float_value);
-//					else
-//						g_clear_error (&error);
-//				}
-//			}
-//		}
+    if (me->imageData == NULL) {
+        // allocate room for a RGB image, aravis provided payload data may be
+        // in other pixel formats (8 bit, 10 bit, 12 bit, 16 bit,..)
+        me->imageData = malloc(size);
+    }
+    // do we need to reallocate the RGB buffer?
+    if (me->imageSize < size) {
+        me->imageData = realloc(me->imageData, size);
+    }
+    me->imageSize = size;
 
-		/* Image processing here */
+    assert(me->imageData != NULL);
+    assert(me->imageSize > 0);
 
-        int imageWidth = arv_buffer_get_image_width(buffer);
-        assert(imageWidth > 0);
-        int imageHeight = arv_buffer_get_image_height(buffer);
-        assert(imageHeight > 0);
-        // RGBA image
-        size_t size = imageWidth * imageHeight * 4;
-        size_t payload = 0;
-        const void *raw = arv_buffer_get_data(buffer, &payload);
-        assert(raw != NULL);
-        int pixelFormat = arv_buffer_get_image_pixel_format(buffer);
-//        fprintf(stderr, "raw image %lu bytes, pixel format %08X\n", payload, pixelFormat);
+    memcpy(me->imageData, raw, size);
+    me->imageWidth = imageWidth;
+    me->imageHeight = imageHeight;
+    me->bufferCount++;
+    me->transferred += size;
 
-        int imageDepth = 0;
-        switch (pixelFormat) {
-//        case ARV_PIXEL_FORMAT_MONO_16:
-//            fprintf(stderr, "pixel format ARV_PIXEL_FORMAT_MONO_16\n");
-//            imageDepth = 2;
-//            break;
-        case ARV_PIXEL_FORMAT_MONO_8:
-//            fprintf(stderr, "pixel format ARV_PIXEL_FORMAT_MONO_8\n");
-            imageDepth = 1;
-            break;
-        default:
-            fprintf(stderr, "unhandled pixel format 0x%X\n", pixelFormat);
-            break;
-        }
-        assert(imageDepth != 0);
-//        fprintf(stderr, "RGB image %lu bytes, pixel format RGB\n", size);
+    // main loop will pick the new frame data
+    me->imageUpdated = true;
 
-        //struct timeval tv;
-        //gettimeofday(&tv, NULL);
-        //char filename[256];
-        //sprintf(filename, "%ld_%ld.dat", tv.tv_sec, tv.tv_usec);
-        //int fd = open(filename, O_WRONLY | O_CREAT, 0666);
-        //size_t ret = write(fd, raw, size);
-        //g_assert(size == ret);
-        //fprintf(stderr, "wrote %lu bytes to file %s\n", ret, filename);
-        //close(fd);
-
-        if (me->imageData == NULL) {
-            // allocate room for a RGB image, aravis provided payload data may be
-            // in other pixel formats (8 bit, 10 bit, 12 bit, 16 bit,..)
-            me->imageData = malloc(size);
-        }
-        // do we need to reallocate the RGB buffer?
-        if (me->imageSize < size) {
-            me->imageData = realloc(me->imageData, size);
-        }
-        me->imageSize = size;
-
-        assert(me->imageData != NULL);
-        assert(me->imageSize > 0);
-        assert(me->imageSize > payload);
-
-        if (! me->applyColorMap) {
-            me->imageSize = payload;
-            memcpy(me->imageData, raw, payload);
-        } else {
-            unsigned char *dst = (unsigned char *)me->imageData;
-            unsigned char *src = (unsigned char *)raw;
-            if (imageDepth == 1) {
-                for (size_t c = 0, r = 0; c < size && r < payload; c += 4, r += 1) {
-    #if 0
-                    // copy raw pixels verbatim
-                    *dst = *src;
-                    *(dst + 1) = *src;
-                    *(dst + 2) = *src;
-    #else
-                    // apply JET colormap
-    //                float val = (float)*src / 255.0;
-    //                vec4 map = colormap(val);
-    //                *dst = (unsigned char)(map.r * 255.0);
-    //                *(dst + 1) = (unsigned char)(map.g * 255.0);
-    //                *(dst + 2) = (unsigned char)(map.b * 255.0);
-
-                    *(dst + 0) = me->colorMap8[*src][0];
-                    *(dst + 1) = me->colorMap8[*src][1];
-                    *(dst + 2) = me->colorMap8[*src][2];
-                    // alpha needs to be 1
-                    *(dst + 3) = 255;
-    #endif
-                    dst += 4;
-                    src += 1;
-                }
-            }
-        }
-        me->imageWidth = imageWidth;
-        me->imageHeight = imageHeight;
-        me->bufferCount++;
-        me->transferred += payload;
-
-        // main loop will pick the new frame data
-        me->imageUpdated = true;
-
-        // always return the buffer to the stream
-		arv_stream_push_buffer(_stream, buffer);
-//	}
-
-//    set_cancel(0);
+    // always return the buffer to the stream
+    arv_stream_push_buffer(_stream, buffer);
 }
 
 void imAravis::stream_cb(void *user_data, ArvStreamCallbackType type, ArvBuffer *buffer)
@@ -411,7 +259,6 @@ void imAravis::stream_cb(void *user_data, ArvStreamCallbackType type, ArvBuffer 
 	}
 }
 
-//static bool periodic_task_cb(void *abstract_data)
 bool imAravis::periodic_task_cb(void)
 {
 	fprintf(stderr, "%3d frame%s - %7.3g MiB/s",
@@ -434,7 +281,6 @@ bool imAravis::periodic_task_cb(void)
 	return true;
 }
 
-//static bool emit_software_trigger (void *abstract_data)
 bool imAravis::emit_software_trigger(void)
 {
 //	ArvCamera *camera = (ArvCamera *)abstract_data;
@@ -457,30 +303,12 @@ void imAravis::control_lost_cb(ArvGvDevice *gv_device)
 
 
 bool imAravis::initialize(void) {
-//    ApplicationData data;
-//	ArvCamera *camera;
-//	ArvStream *stream;
-//	GOptionContext *context;
 	GError *error = NULL;
 	int i;
 
 	bufferCount = 0;
 	errorCount = 0;
 	transferred = 0;
-//	chunks = NULL;
-//	chunk_parser = NULL;
-
-//	context = g_option_context_new (NULL);
-//	g_option_context_add_main_entries (context, arv_option_entries, NULL);
-
-//	if (!g_option_context_parse (context, &argc, &argv, &error)) {
-//		g_option_context_free (context);
-//		g_print ("Option parsing failed: %s\n", error->message);
-//		g_error_free (error);
-//		return EXIT_FAILURE;
-//	}
-
-//	g_option_context_free (context);
 
 	arv_enable_interface("Fake");
 
@@ -500,47 +328,17 @@ bool imAravis::initialize(void) {
         return false;
     }
 
-//    arv_camera_stop_acquisition(camera, NULL);
-
-//    void (*old_sigint_handler)(int);
     gint payload;
-//    gint x, y, width, height;
     gint x, y;
     gint dx, dy;
     double exposure;
-//    guint64 n_completed_buffers;
-//    guint64 n_failures;
-//    guint64 n_underruns;
     int gain;
-//    guint software_trigger_source = 0;
-
-//    if (arv_option_chunks != NULL) {
-//        char *striped_chunks;
-
-//        striped_chunks = g_strdup (arv_option_chunks);
-//        arv_str_strip (striped_chunks, " ,:;", ',');
-//        chunks = g_strsplit_set (striped_chunks, ",", -1);
-//        g_free (striped_chunks);
-
-//        chunk_parser = arv_camera_create_chunk_parser (camera);
-
-//        for (i = 0; chunks[i] != NULL; i++) {
-//            char *chunk = g_strdup_printf ("Chunk%s", chunks[i]);
-
-//            g_free (chunks[i]);
-//            chunks[i] = chunk;
-//        }
-//    }
 
     arv_camera_set_chunks(camera, arv_option_chunks, NULL);
     arv_camera_set_region(camera, 0, 0, arv_option_width, arv_option_height, NULL);
     arv_camera_set_binning(camera, arv_option_horizontal_binning, arv_option_vertical_binning, NULL);
     arv_camera_set_exposure_time(camera, arv_option_exposure_time_us, NULL);
     arv_camera_set_gain(camera, arv_option_gain, NULL);
-
-//    if (arv_camera_is_uv_device(camera)) {
-//        arv_camera_uv_set_bandwidth (camera, arv_option_bandwidth_limit, NULL);
-//    }
 
     if (arv_camera_is_gv_device(camera)) {
         arv_camera_gv_select_stream_channel(camera, arv_option_gv_stream_channel, NULL);
@@ -583,13 +381,6 @@ bool imAravis::initialize(void) {
         fprintf(stderr, "gv packet delay       = %" G_GINT64_FORMAT " ns\n", arv_camera_gv_get_packet_delay(camera, NULL));
         fprintf(stderr, "gv packet size        = %d bytes\n", arv_camera_gv_get_packet_size(camera, NULL));
     }
-
-//    if (arv_camera_is_uv_device (camera)) {
-//        guint min,max;
-
-//        arv_camera_uv_get_bandwidth_bounds (camera, &min, &max, NULL);
-//        fprintf(stderr, "uv bandwidth limit     = %d [%d..%d]\n", arv_camera_uv_get_bandwidth (camera, NULL), min, max);
-//    }
 
     stream = arv_camera_create_stream(camera, imAravis::stream_cb, NULL, &error);
     if (ARV_IS_STREAM(stream)) {
@@ -635,7 +426,6 @@ bool imAravis::initialize(void) {
         }
 
         arv_camera_stop_acquisition(camera, NULL);
-//        arv_camera_start_acquisition(camera, NULL);
         acquiring = false;
 
         g_signal_connect(stream, "new-buffer", G_CALLBACK(imAravis::new_buffer_cb), this);
@@ -643,25 +433,14 @@ bool imAravis::initialize(void) {
 
         g_signal_connect(arv_camera_get_device(camera), "control-lost",
                   G_CALLBACK(imAravis::control_lost_cb), NULL);
-
-//        g_timeout_add(1000, periodic_task_cb, &data);
-
-//        data.main_loop = g_main_loop_new(NULL, false);
-
-//        old_sigint_handler = signal(SIGINT, set_cancel);
     }
 
-//    g_clear_error(&error);
     return true;
 }
 
 void imAravis::destroy(void) {
 //    if (software_trigger_source > 0)
 //        g_source_remove(software_trigger_source);
-
-//    signal(SIGINT, old_sigint_handler);
-
-//    g_main_loop_unref(data.main_loop);
 
     if (! camera) {
         return;
@@ -681,11 +460,4 @@ void imAravis::destroy(void) {
     arv_stream_set_emit_signals(stream, false);
     g_object_unref(stream);
     g_object_unref(camera);
-
-//    if (chunks != NULL) {
-//        g_strfreev(chunks);
-//    }
-
-//    g_clear_object(&chunk_parser);
 }
-

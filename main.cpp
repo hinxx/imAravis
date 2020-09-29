@@ -180,7 +180,6 @@ int main(int, char**)
 
     // aravis
     imAravis *cam = new imAravis();
-//    GLuint imageTexture = 0;
 
 //    GLint ExtensionCount;
 //    glGetIntegerv(GL_NUM_EXTENSIONS, &ExtensionCount);
@@ -196,174 +195,6 @@ int main(int, char**)
 
     GLuint shaderHandle = 0, vertHandle = 0, fragHandle = 0;
 
-#if 0
-    const GLchar* vertex_shader =
-        "uniform mat4 ProjMtx;\n"
-        "in vec2 Position;\n"
-        "in vec2 UV;\n"
-        "in vec4 Color;\n"
-        "out vec2 Frag_UV;\n"
-        "out vec4 Frag_Color;\n"
-        "void main()\n"
-        "{\n"
-        "    Frag_UV = UV;\n"
-        "    Frag_Color = Color;\n"
-        "    gl_Position = ProjMtx * vec4(Position.xy,0,1);\n"
-        "}\n";
-
-    const GLchar* fragment_shader =
-        "uniform sampler2D Texture;\n"
-        "in vec2 Frag_UV;\n"
-        "in vec4 Frag_Color;\n"
-        "out vec4 Out_Color;\n"
-        "void main()\n"
-        "{\n"
-        "    Out_Color = Frag_Color * texture(Texture, Frag_UV.st);\n"
-        "}\n";
-#elif 0
-    const GLchar* vertex_shader =
-        "uniform mat4 ProjMtx;\n"
-        "in vec2 Position;\n"
-        "in vec2 UV;\n"
-        "in vec4 Color;\n"
-        "out vec2 Frag_UV;\n"
-        "out vec4 Frag_Color;\n"
-        "void main()\n"
-        "{\n"
-        "    Frag_UV = UV;\n"
-        "    Frag_Color = Color;\n"
-        "    gl_Position = ProjMtx * vec4(Position.xy,0,1);\n"
-        "}\n";
-
-    const GLchar* fragment_shader =
-        "uniform sampler2D Texture;\n"
-        "in vec2 Frag_UV;\n"
-        "in vec4 Frag_Color;\n"
-        "out vec4 Out_Color;\n"
-        "vec4 colormap(float x);\n"
-        "void main()\n"
-        "{\n"
-//        "    Out_Color = Frag_Color * texture(Texture, Frag_UV.st);\n"
-// take red component as index (any r, g, or b should do..)
-            "    Out_Color = colormap(texture(Texture, Frag_UV.st).r);\n"
-//            "    Out_Color = colormap(0.0);\n"
-        "}\n"
-        "\n"
-        "float colormap_red(float x) {\n"
-        "    if (x < 0.7) {\n"
-        "        return 4.0 * x - 1.5;\n"
-        "    } else {\n"
-        "        return -4.0 * x + 4.5;\n"
-        "    }\n"
-        "}\n"
-        "\n"
-        "float colormap_green(float x) {\n"
-        "    if (x < 0.5) {\n"
-        "        return 4.0 * x - 0.5;\n"
-        "    } else {\n"
-        "        return -4.0 * x + 3.5;\n"
-        "    }\n"
-        "}\n"
-        "\n"
-        "float colormap_blue(float x) {\n"
-        "    if (x < 0.3) {\n"
-        "       return 4.0 * x + 0.5;\n"
-        "    } else {\n"
-        "       return -4.0 * x + 2.5;\n"
-        "    }\n"
-        "}\n"
-        "\n"
-        "vec4 colormap(float x) {\n"
-        "    float r = clamp(colormap_red(x), 0.0, 1.0);\n"
-        "    float g = clamp(colormap_green(x), 0.0, 1.0);\n"
-        "    float b = clamp(colormap_blue(x), 0.0, 1.0);\n"
-        "    return vec4(r, g, b, 1.0);\n"
-        "}\n"
-        "\n";
-#elif 0
-    // this works with the TRIANGLE example
-    const GLchar* vertex_shader =
-        "in vec3 aPos;\n" // the position variable has attribute position 0
-        "\n"
-        "out vec4 vertexColor;\n" // specify a color output to the fragment shader
-        "\n"
-        "void main()\n"
-        "{\n"
-        "    gl_Position = vec4(aPos, 1.0);\n"              // see how we directly give a vec3 to vec4's constructor
-        "    vertexColor = vec4(0.5, 0.0, 0.0, 1.0);\n" // set the output variable to a dark-red color
-        "}\n";
-
-    const GLchar* fragment_shader =
-        "out vec4 FragColor;\n"
-        "\n"
-        "in vec4 vertexColor;\n" // the input variable from the vertex shader (same name and same type)
-        "\n"
-        "void main()\n"
-        "{\n"
-        "    FragColor = vertexColor;\n"
-        "}\n";
-#elif 0
-    // this works with the TRIANGLE/RECTANGLE
-    const GLchar* vertex_shader =
-        "in vec3 aPos;\n"           // attributes 0
-        "in vec2 aTexCoords;\n"     // attributes 1
-//        "out vec4 vertexColor;\n"   // for fragment shader
-        "out vec2 TexCoords;\n"
-        "void main()\n"
-        "{\n"
-        "    gl_Position = vec4(aPos, 1.0);\n"              // see how we directly give a vec3 to vec4's constructor
-        //"    gl_Position = vec4(aPos.x, aPos.y, 0.0, 1.0);\n"
-        //"    vertexColor = vec4(0.5, 0.0, 0.0, 1.0);\n"   // set the output variable to a dark-red color
-        "TexCoords = aTexCoords;\n"
-        "}\n";
-
-    const GLchar* fragment_shader =
-        "out vec4 FragColor;\n"
-        "in vec2 TexCoords;\n"
-//        "in vec4 vertexColor;\n" // the input variable from the vertex shader (same name and same type)
-        "uniform sampler2D screenTexture;\n"
-        "vec4 colormap(float x);\n"
-        "void main()\n"
-        "{\n"
-//        "    FragColor = vertexColor;\n"
-//        "    FragColor = texture(screenTexture, TexCoords);\n"
-         // take red component as index (any r, g, or b should do..)
-        "    FragColor = colormap(texture(screenTexture, TexCoords).g);\n"
-        "}\n"
-        "\n"
-        // JET color map
-        "float colormap_red(float x) {\n"
-        "    if (x < 0.7) {\n"
-        "        return 4.0 * x - 1.5;\n"
-        "    } else {\n"
-        "        return -4.0 * x + 4.5;\n"
-        "    }\n"
-        "}\n"
-        "\n"
-        "float colormap_green(float x) {\n"
-        "    if (x < 0.5) {\n"
-        "        return 4.0 * x - 0.5;\n"
-        "    } else {\n"
-        "        return -4.0 * x + 3.5;\n"
-        "    }\n"
-        "}\n"
-        "\n"
-        "float colormap_blue(float x) {\n"
-        "    if (x < 0.3) {\n"
-        "       return 4.0 * x + 0.5;\n"
-        "    } else {\n"
-        "       return -4.0 * x + 2.5;\n"
-        "    }\n"
-        "}\n"
-        "\n"
-        "vec4 colormap(float x) {\n"
-        "    float r = clamp(colormap_red(x), 0.0, 1.0);\n"
-        "    float g = clamp(colormap_green(x), 0.0, 1.0);\n"
-        "    float b = clamp(colormap_blue(x), 0.0, 1.0);\n"
-        "    return vec4(r, g, b, 1.0);\n"
-        "}\n";
-#else
-
     // this works with the TRIANGLE/RECTANGLE
     const GLchar* vertex_shader =
         "in vec3 aPos;\n"           // attributes 0
@@ -375,60 +206,7 @@ int main(int, char**)
         "    TexCoords = aTexCoords;\n"
         "}\n";
 
-    // Paletted textures
-    // https://www.khronos.org/opengl/wiki/Common_Mistakes#Updating_a_texture
-//    //Fragment shader
-//    #version 110
-//    uniform sampler2D ColorTable;     //256 x 1 pixels
-//    uniform sampler2D MyIndexTexture;
-//    varying vec2 TexCoord0;
-
-//    void main()
-//    {
-//      //What color do we want to index?
-//      vec4 myindex = texture2D(MyIndexTexture, TexCoord0);
-//      //Do a dependency texture read
-//      vec4 texel = texture2D(ColorTable, myindex.xy);
-//      gl_FragColor = texel;   //Output the color
-//    }
-/*
-    const GLchar* fragment_shader =
-        "out vec4 FragColor;\n"
-        "in vec2 TexCoords;\n"                  // from vertex shader
-        "uniform sampler2D screenTexture;\n"    // our texture (grayscale)
-        "uniform sampler2D ColorTable;\n"       // our colormap 256 x 1 pixel
-//        "vec4 colormap(float x);\n"
-        "void main()\n"
-        "{\n"
-//        "    FragColor = vertexColor;\n"
-//        "    FragColor = texture(screenTexture, TexCoords);\n"
-
-         // take red component as index (any r, g, or b should do..)
-//        "    FragColor = colormap(texture(screenTexture, TexCoords).g);\n"
-
-        // What color do we want to index?
-        "    vec4 myindex = texture(screenTexture, TexCoords);\n"
-        // Do a colormap texture read
-        "    FragColor = texture(ColorTable, myindex.xy);"
-        "}\n";
-*/
-/*
- * https://gamedev.stackexchange.com/questions/43294/creating-a-retro-style-palette-swapping-effect-in-opengl
- *
-    uniform sampler1D Palette;             // A palette of 256 colors
-    uniform sampler2D IndexedColorTexture; // A texture using indexed color
-    varying vec2 TexCoord0;                // UVs
-
-    void main()
-    {
-        // Pick up a color index
-        vec4 index = texture2D(IndexedColorTexture, TexCoord0);
-        // Retrieve the actual color from the palette
-        vec4 texel = texture1D(Palette, index.x);
-        gl_FragColor = texel;   //Output the color
-    }
-    */
-
+    // https://gamedev.stackexchange.com/questions/43294/creating-a-retro-style-palette-swapping-effect-in-opengl
     const GLchar* fragment_shader =
         "out vec4 FragColor;\n"
         "in vec2 TexCoords;\n"                  // from vertex shader
@@ -436,12 +214,6 @@ int main(int, char**)
         "uniform sampler1D ColorTable;\n"       // our colormap 256 colors
         "void main()\n"
         "{\n"
-//        "    FragColor = vertexColor;\n"
-//        "    FragColor = texture(screenTexture, TexCoords);\n"
-
-         // take red component as index (any r, g, or b should do..)
-//        "    FragColor = colormap(texture(screenTexture, TexCoords).g);\n"
-
         // Pick up a color index
         "    vec4 index = texture2D(screenTexture, TexCoords);\n"
         // Retrieve the actual color from the palette
@@ -449,42 +221,6 @@ int main(int, char**)
         // Output the color
         "    FragColor = texel;"
         "}\n";
-#endif
-
-    //TRIANGLE CREATION//
-#if 0
-    float Tvertices[] = {
-        -0.5f, -0.5f, 0.0f,
-         0.5f, -0.5f, 0.0f,
-         0.0f,  0.5f, 0.0f
-    };
-
-    float Tvertices2[] = {
-        1.0f,   1.0f,
-        1.0f,   0.0f,
-        0.0f,   0.0f,
-        0.0f,   1.0f
-    };
-
-    unsigned int Tvbo, Tvbo2, Tvao;
-    glGenVertexArrays(1, &Tvao);
-    glGenBuffers(1, &Tvbo);
-    glBindVertexArray(Tvao);
-    glBindBuffer(GL_ARRAY_BUFFER, Tvbo);
-    glBufferData(GL_ARRAY_BUFFER, sizeof(Tvertices), Tvertices, GL_STATIC_DRAW);
-    glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, 3 * sizeof(float), (void*)0);
-    glEnableVertexAttribArray(0);
-
-    glGenBuffers(1, &Tvbo2);
-    glBindBuffer(GL_ARRAY_BUFFER, Tvbo2);
-    glBufferData(GL_ARRAY_BUFFER, sizeof(Tvertices2), Tvertices2, GL_STATIC_DRAW);
-    glVertexAttribPointer(1, 2, GL_FLOAT, GL_FALSE, 2 * sizeof(float), (void*)0);
-    glEnableVertexAttribArray(1);
-    glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, 0);
-    glBindBuffer(GL_ARRAY_BUFFER, 0);
-    glBindVertexArray(0);
-
-#endif
 
     //RECTANGLE CREATION//
 
@@ -579,6 +315,30 @@ int main(int, char**)
 
     GLuint imageTexture = 0;
     GLuint colormapTexture = 0;
+
+    // Create a OpenGL texture identifier
+    glGenTextures(1, &imageTexture);
+    glBindTexture(GL_TEXTURE_2D, imageTexture);
+
+    // Setup filtering parameters for display
+    // glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
+    // glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
+    // Upload pixels into texture
+    glPixelStorei(GL_UNPACK_ROW_LENGTH, 0);
+
+    glGenTextures(1, &colormapTexture);
+    glBindTexture(GL_TEXTURE_1D, colormapTexture);
+    // glTexParameteri(GL_TEXTURE_1D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
+    // glTexParameteri(GL_TEXTURE_1D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
+    glTexParameteri(GL_TEXTURE_1D, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
+    glTexParameteri(GL_TEXTURE_1D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
+    // Upload pixels into texture
+    glPixelStorei(GL_UNPACK_ROW_LENGTH, 0);
+
+    int glError = glGetError();
+
     double timeout = ImGui::GetTime() + 1.0;
     static float frameRate = arv_camera_get_frame_rate(cam->camera, NULL);
 
@@ -652,131 +412,60 @@ int main(int, char**)
                 arv_camera_stop_acquisition(cam->camera, NULL);
                 cam->acquiring = false;
             }
-            ImGui::SameLine();
-            ImGui::Checkbox("Colormap", &cam->applyColorMap);
 
-//            ImGui::TextColored(ImColor(1, 1, 0), "Statistics");
-//            ImGui::Text("%3d frame%s - %7.3g MiB", cam->buffer_count, cam->buffer_count > 1 ? "s/s" : "/s ", (double) cam->transferred / 1e6);
-//            if (cam->error_count > 0) {
-//                ImGui::TextColored(ImColor(1, 0, 0), "%d error%s", cam->error_count, cam->error_count > 1 ? "s" : "");
-//            }
-//            cam->buffer_count = 0;
-//            cam->error_count = 0;
-//            cam->transferred = 0;
-
-            if (! imageTexture) {
-                // Create a OpenGL texture identifier
-                glGenTextures(1, &imageTexture);
-                glBindTexture(GL_TEXTURE_2D, imageTexture);
-
-                // Setup filtering parameters for display
-                // glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
-                // glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
-                glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
-                glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
-                // Upload pixels into texture
-                glPixelStorei(GL_UNPACK_ROW_LENGTH, 0);
-
-                glGenTextures(1, &colormapTexture);
-                glBindTexture(GL_TEXTURE_1D, colormapTexture);
-                // glTexParameteri(GL_TEXTURE_1D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
-                // glTexParameteri(GL_TEXTURE_1D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
-                glTexParameteri(GL_TEXTURE_1D, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
-                glTexParameteri(GL_TEXTURE_1D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
-                // Upload pixels into texture
-                glPixelStorei(GL_UNPACK_ROW_LENGTH, 0);
-            }
-
-//#if 1
             if (cam->imageUpdated) {
 
-                // render
-                // ------
+                // render to FBO
                 // bind to framebuffer and draw scene as we normally would to color texture
                 glBindFramebuffer(GL_FRAMEBUFFER, framebuffer);
-                //glEnable(GL_DEPTH_TEST); // enable depth testing (is disabled for rendering screen-space quad)
 
                 // make sure we clear the framebuffer's content
-                glClearColor(0.1f, 0.1f, 0.1f, 1.0f);
-                //glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
+                glClearColor(clear_color.x, clear_color.y, clear_color.z, clear_color.w);
+                glClear(GL_COLOR_BUFFER_BIT);
 
                 glUseProgram(shaderHandle);
 
-                // this is not not, even though we get the image on screen..
-                //glBindTexture(GL_TEXTURE_2D, textureColorbuffer);
-
-//                if (cam->image_depth == 1) {
-//                    glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA, cam->image_width, cam->image_height, 0, GL_RED, GL_UNSIGNED_BYTE, cam->image_data);
-//                } else if (cam->image_depth == 2) {
-//                    glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA, cam->image_width, cam->image_height, 0, GL_RED, GL_UNSIGNED_SHORT, cam->image_data);
-//                }
-
-                if (! cam->applyColorMap) {
-                    // we expect a R8, no alpha, type of pixel data
-//                    glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA, cam->imageWidth, cam->imageHeight, 0, GL_RED, GL_UNSIGNED_BYTE, cam->imageData);
-                    //glTexImage2D(GL_TEXTURE_2D, 0, GL_RGB, cam->imageWidth, cam->imageHeight, 0, GL_RED, GL_UNSIGNED_BYTE, cam->imageData);
-//                    glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA, cam->imageWidth, cam->imageHeight, 0, GL_GREEN, GL_UNSIGNED_BYTE, cam->imageData);
-                    glTexImage2D(GL_TEXTURE_2D, 0, GL_R8, cam->imageWidth, cam->imageHeight, 0, GL_RED, GL_UNSIGNED_BYTE, cam->imageData);
-                } else {
-                    // we expect a RGB, no alpha, type of pixel data
-                    glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA, cam->imageWidth, cam->imageHeight, 0, GL_RGBA, GL_UNSIGNED_BYTE, cam->imageData);
-                }
-
-
-                int glError = glGetError();
-                if (glError != GL_NO_ERROR) {
-                    fprintf(stderr, "glGetError() returned 0x%04X\n", glError);
-                }
-                assert(glError == 0);
-
-//                glDrawArrays(GL_POINTS, 0, cam->imageSize);
-//                glError = glGetError();
-//                fprintf(stderr, "glGetError() returned 0x%04X\n", glError);
-//                assert(glError == 0);
-
-                cam->imageUpdated = false;
-//#else
-                // triangle
-//                glBindVertexArray(Tvao);
-//                glBindTexture(GL_TEXTURE_2D, imageTexture);
-//                glDrawArrays(GL_TRIANGLES, 0, 3);
-
-
-                glUniform1i(glGetUniformLocation(shaderHandle, "screenTexture"), 0);    // set it manually
-
+                // we expect a R8 type of pixel data wo/ alpha
+                // GL_RED means single channels
+                // GL_R8 is for 8 bit indexed images
+                // XXX: make this work for 16 bit images as well
+                // XXX: To change texels in an already existing 2d texture, use glTexSubImage2D
+                //      https://www.khronos.org/opengl/wiki/Common_Mistakes#Updating_a_texture
+                glTexImage2D(GL_TEXTURE_2D, 0, GL_R8, cam->imageWidth, cam->imageHeight, 0, GL_RED, GL_UNSIGNED_BYTE, cam->imageData);
                 glError = glGetError();
                 if (glError != GL_NO_ERROR) {
                     fprintf(stderr, "glGetError() returned 0x%04X\n", glError);
                 }
                 assert(glError == 0);
 
-                glUniform1i(glGetUniformLocation(shaderHandle, "ColorTable"), 1);       // set it manually
+                // set shader uniform index for indexed image: 0
+                glUniform1i(glGetUniformLocation(shaderHandle, "screenTexture"), 0);
                 glError = glGetError();
                 if (glError != GL_NO_ERROR) {
                     fprintf(stderr, "glGetError() returned 0x%04X\n", glError);
                 }
                 assert(glError == 0);
 
-//                glBindTexture(GL_TEXTURE_2D, myColorTableID);
-//                glTexSubImage2D(GL_TEXTURE_2D, 0, 0, 0, 256, 1, GL_BGRA, GL_UNSIGNED_BYTE, mypixels);
+                // set shader uniform index for colomap array: 1
+                glUniform1i(glGetUniformLocation(shaderHandle, "ColorTable"), 1);
+                glError = glGetError();
+                if (glError != GL_NO_ERROR) {
+                    fprintf(stderr, "glGetError() returned 0x%04X\n", glError);
+                }
+                assert(glError == 0);
 
-                // rectangle
+                // rectangle vertex array
                 glBindVertexArray(vao);
                 glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, EBO);
-
+                // indexed image 2D texture
                 glActiveTexture(GL_TEXTURE0);
                 glBindTexture(GL_TEXTURE_2D, imageTexture);
-
+                // colormap 1D texture
                 glActiveTexture(GL_TEXTURE1);
                 glBindTexture(GL_TEXTURE_1D, colormapTexture);
-//                glTexSubImage2D(GL_TEXTURE_2D, 0, 0, 0, 256, 1, GL_RGB, GL_UNSIGNED_BYTE, cam->colorMap8);
-//                glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA, 256, 1, 0, GL_RGB, GL_UNSIGNED_BYTE, cam->colorMap8);
-
-//                glTexImage2D(GL_TEXTURE_2D, 0, GL_RGB, 256, 1, 0, GL_RGB, GL_FLOAT, cam->colorMapFloat);
-//                glTexImage2D(GL_TEXTURE_2D, 0, GL_RGB, 256, 1, 0, GL_BGR, GL_FLOAT, cam->colorMapFloat);
-//                glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA, 256, 3, 0, GL_BGR, GL_FLOAT, cam->colorMapFloat);
-//                glTexImage1D(GL_TEXTURE_1D, 0, GL_RGB, 256, 0, GL_RED, GL_FLOAT, cam->colorMap);
                 // GL_RGBA8 = 8 bits got each color and alpha
+                // XXX: To change texels in an already existing 2d texture, use glTexSubImage2D
+                //      https://www.khronos.org/opengl/wiki/Common_Mistakes#Updating_a_texture
                 glTexImage1D(GL_TEXTURE_1D, 0, GL_RGBA8, 256, 0, GL_RGBA, GL_UNSIGNED_BYTE, cam->colorMap);
 
                 glError = glGetError();
@@ -787,11 +476,11 @@ int main(int, char**)
 
                 glDrawElements(GL_TRIANGLES, 6, GL_UNSIGNED_INT, 0);
 
-                // now bind back to default framebuffer and draw a quad plane with the attached framebuffer color texture
+                // now bind back to default framebuffer (for ImGui)
                 glBindFramebuffer(GL_FRAMEBUFFER, 0);
 
                 glActiveTexture(GL_TEXTURE0);
-//#endif
+                cam->imageUpdated = false;
             }
 
             ImGui::Text("pointer = %p", (void*)(intptr_t)imageTexture);
@@ -804,7 +493,7 @@ int main(int, char**)
                 totalBufferCount += bufferCount;
                 errorCount += cam->errorCount;
                 transferred = (double) cam->transferred / 1e6;
-//                cam->periodic_task_cb();
+                //cam->periodic_task_cb();
                 // reset the stats until next timeout (1 s)
                 cam->bufferCount = 0;
                 cam->errorCount = 0;
@@ -820,32 +509,9 @@ int main(int, char**)
                 arv_camera_set_frame_rate(cam->camera, frameRate, NULL);
             }
 
-            // original image
-            //ImGui::Image((void*)(intptr_t)imageTexture, ImVec2(cam->imageWidth, cam->imageHeight));
-
-            // FBO image
-#if 1
+            // use FBO rendered texture
             ImGui::Image((void*)(intptr_t)textureColorbuffer, ImVec2(cam->imageWidth, cam->imageHeight));
-#else
-            // Image primitives
-            // - Read FAQ to understand what ImTextureID is.
-            // - "p_min" and "p_max" represent the upper-left and lower-right corners of the rectangle.
-            // - "uv_min" and "uv_max" represent the normalized texture coordinates to use for those corners. Using (0,0)->(1,1) texture coordinates will generally display the entire texture.
-//            IMGUI_API void  AddImage(ImTextureID user_texture_id,
-//            const ImVec2& p_min, const ImVec2& p_max,
-//            const ImVec2& uv_min = ImVec2(0, 0), const ImVec2& uv_max = ImVec2(1, 1),
-//            ImU32 col = IM_COL32_WHITE);
 
-//            ImVec2 pos = ImGui::GetCursorScreenPos();
-            ImGui::GetWindowDrawList()->AddImage(
-//                (void*)(intptr_t)imageTexture,
-                (void*)(intptr_t)textureColorbuffer,
-                ImVec2(ImGui::GetCursorScreenPos()),
-//                        ImVec2(ImGui::GetCursorScreenPos().x + ImGui::GetWindowWidth()/2, ImGui::GetCursorScreenPos().y + ImGui::GetWindowHeight()/2)
-                ImVec2(ImGui::GetCursorScreenPos().x + cam->imageWidth, ImGui::GetCursorScreenPos().y + cam->imageHeight)
-//              ,ImVec2(0, 1), ImVec2(1, 0)
-                );
-#endif
             ImGui::End();
         }
 
