@@ -36,6 +36,18 @@ struct Camera {
     long *pixelFormats;
     const char **pixelFormatStrings;
     const char *pixelFormatString;
+    ArvPixelFormat pixelFormat;
+
+    bool autoSocketBuffer;
+    bool packetResend;
+    // in milli seconds
+    unsigned int packetTimeout;
+    unsigned int frameRetention;
+    double packetRequestRatio;
+
+    unsigned int numImages;
+    unsigned int numBytes;
+    unsigned int numErrors;
 
     Camera(const unsigned int _index, const char *_protocol, const char *_deviceId, const char *_vendor, const char *_model, const char *_serialNumber, const char *_physicalId);
     ~Camera(void);
@@ -43,12 +55,13 @@ struct Camera {
     void start(void);
     void startVideo(void);
     void stopVideo(void);
-    static void controlLostCallback(void *_arg);
+    static void controlLostCallback(void *_userData);
+    static void streamCallback(void *_userData, ArvStreamCallbackType _type, ArvBuffer *_buffer);
+    static void newBufferCallback(ArvStream *_stream, void *_userData);
 };
 
 struct Viewer {
     std::vector<Camera *> cameras;
-//    unsigned int selectedCamera;
     Camera *camera;
 
     Viewer(void);

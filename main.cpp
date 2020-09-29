@@ -179,10 +179,6 @@ int main(int, char**)
     bool show_another_window = false;
     ImVec4 clear_color = ImVec4(0.45f, 0.55f, 0.60f, 1.00f);
 
-    // aravis
-    imAravis *cam = new imAravis();
-    Viewer *viewer = new Viewer();
-
 //    GLint ExtensionCount;
 //    glGetIntegerv(GL_NUM_EXTENSIONS, &ExtensionCount);
 //    fprintf(stderr, "GL_NUM_EXTENSIONS: %d\n", ExtensionCount);
@@ -339,10 +335,13 @@ int main(int, char**)
     // Upload pixels into texture
     glPixelStorei(GL_UNPACK_ROW_LENGTH, 0);
 
-    int glError = glGetError();
 
-    double timeout = ImGui::GetTime() + 1.0;
-    static float frameRate = arv_camera_get_frame_rate(cam->camera, NULL);
+    // aravis
+//    imAravis *cam = new imAravis();
+//    int glError = glGetError();
+//    double timeout = ImGui::GetTime() + 1.0;
+//    static float frameRate = arv_camera_get_frame_rate(cam->camera, NULL);
+    Viewer *viewer = new Viewer();
 
     ImGui::StyleColorsLight();
 
@@ -478,14 +477,26 @@ int main(int, char**)
                 for (unsigned int i = 0; i < cam->numPixelFormats; i++) {
                     ImGui::Text("%s (0x%08lX)", cam->pixelFormatStrings[i], cam->pixelFormats[i]);
                 }
-                ImGui::Text("Selected pixels format %s", cam->pixelFormatString);
+                ImGui::Text("Selected pixels format %s (0x%08X)", cam->pixelFormatString, cam->pixelFormat);
+
+                if (ImGui::Button("Start")) {
+                    //arv_camera_start_acquisition(cam->camera, NULL);
+                    //cam->acquiring = true;
+                    cam->startVideo();
+                }
+                ImGui::SameLine();
+                if (ImGui::Button("Stop")) {
+//                    arv_camera_stop_acquisition(cam->camera, NULL);
+//                    cam->acquiring = false;
+                    cam->stopVideo();
+                }
             } else {
                 ImGui::Text("Device not connected.");
             }
 
             ImGui::End();
         }
-
+#if 0
         {
             ImGui::Begin("Image Window");
 
@@ -604,6 +615,7 @@ int main(int, char**)
 
             ImGui::End();
         }
+#endif
 
         // Rendering
         ImGui::Render();
@@ -618,7 +630,7 @@ int main(int, char**)
     }
 
     // aravis
-    delete cam;
+//    delete cam;
     delete viewer;
 
     // Cleanup

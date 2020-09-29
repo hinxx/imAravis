@@ -78,22 +78,6 @@ void Viewer::stopCamera(void) {
     camera->stop();
 }
 
-void Camera::controlLostCallback(void *_arg) {
-
-    Camera *camera = (Camera *)_arg;
-	E("camera %s control lost\n", camera->deviceId);
-
-    camera->connected = false;
-
-    // WHAT TO DO HERE?!?
-    // XXX: handle this more gracefully!
-    assert(1 == 0);
-
-//	cancel = true;
-}
-
-
-
 
 
 Camera::Camera(const unsigned int _index, const char *_protocol, const char *_deviceId, const char *_vendor, const char *_model, const char *_serialNumber, const char *_physicalId) {
@@ -108,6 +92,16 @@ Camera::Camera(const unsigned int _index, const char *_protocol, const char *_de
     camera = NULL;
     stream = NULL;
     connected = false;
+    autoSocketBuffer = false;
+    packetResend = true;
+    // in milli seconds
+    packetTimeout = 20;
+    frameRetention = 100;
+    packetRequestRatio = -1.0;
+
+    numImages = 0;
+    numBytes = 0;
+    numErrors = 0;
 }
 
 Camera::~Camera(void) {
@@ -131,9 +125,7 @@ void Camera::start(void) {
     GError *error = NULL;
     camera = arv_camera_new(deviceId, &error);
     if (! ARV_IS_CAMERA(camera)) {
-        E("No camera found%s%s\n",
-			error != NULL ? ": " : "",
-			error != NULL ? error->message : "");
+        E("arv_camera_new() failed : %s\n", (error != NULL) ? error->message : "");
 		g_clear_error(&error);
         return;
     }
@@ -142,8 +134,7 @@ void Camera::start(void) {
 
     arv_camera_set_chunk_mode(camera, FALSE, &error);
     if ((error != NULL) && (error->code != ARV_DEVICE_ERROR_FEATURE_NOT_FOUND)  ) {
-        E("arv_camera_set_chunk_mode() failed : %s\n",
-			error != NULL ? error->message : "???");
+        E("arv_camera_set_chunk_mode() failed : %s\n", (error != NULL) ? error->message : "???");
 		g_clear_error(&error);
         return;
     }
@@ -232,6 +223,8 @@ void Camera::start(void) {
 	}
     D("selected pixel format string %s\n", pixelFormatString);
     numPixelFormats = numValidFormats;
+    pixelFormat = arv_camera_get_pixel_format(camera, &error);
+    assert(error == NULL);
 
     binningAvailable = arv_camera_is_binning_available(camera, &error);
     assert(error == NULL);
@@ -268,11 +261,13 @@ void Camera::stop(void) {
     D("camera name %s\n", deviceId);
 
 //    assert(camera != NULL);
-    if (camera == NULL) {
+//    if (camera == NULL) {
+//        return;
+//    }
+    if (! ARV_IS_CAMERA(camera)) {
         return;
     }
 
-//    free(pixelFormatString);
     g_free(pixelFormatStrings);
     g_free(pixelFormats);
     numPixelFormats = 0;
@@ -281,17 +276,149 @@ void Camera::stop(void) {
     stopVideo();
 
     g_clear_object(&camera);
-    camera = NULL;
 }
 
 void Camera::startVideo(void) {
     D("camera name %s\n", deviceId);
 
+    if (! ARV_IS_CAMERA(camera)){
+        E("camera not connected %s\n", deviceId);
+        return;
+    }
     assert(camera != NULL);
+
+    GError *error = NULL;
+    stream = arv_camera_create_stream(camera, Camera::streamCallback, NULL, &error);
+	if (! ARV_IS_STREAM(stream)) {
+        E("arv_camera_create_stream() failed : %s\n", (error != NULL) ? error->message : "???");
+        assert(error == NULL);
+		g_clear_error(&error);
+        // XXX do this elsewhere?!
+        //		g_object_unref(camera);
+        //		camera = NULL;
+		return;
+	}
+
+    if (ARV_IS_GV_STREAM(stream)) {
+		if (autoSocketBuffer)
+			g_object_set(stream,
+				      "socket-buffer", ARV_GV_STREAM_SOCKET_BUFFER_AUTO,
+				      "socket-buffer-size", 0,
+				      NULL);
+		if (! packetResend)
+			g_object_set(stream,
+				      "packet-resend", ARV_GV_STREAM_PACKET_RESEND_NEVER,
+				      NULL);
+        if (packetRequestRatio >= 0.0)
+            g_object_set(stream,
+                      "packet-request-ratio", packetRequestRatio,
+                      NULL);
+		g_object_set(stream,
+			      "packet-timeout", (unsigned) packetTimeout * 1000,
+			      "frame-retention", (unsigned) frameRetention * 1000,
+			      NULL);
+	}
+
+	arv_stream_set_emit_signals(stream, TRUE);
+    unsigned int payload;
+	payload = arv_camera_get_payload(camera, &error);
+    assert(error == NULL);
+    for (unsigned int i = 0; i < 5; i++) {
+        arv_stream_push_buffer(stream, arv_buffer_new(payload, NULL));
+    }
+
+    pixelFormatString = arv_camera_get_pixel_format_as_string(camera, &error);
+    assert(error == NULL);
+    pixelFormat = arv_camera_get_pixel_format(camera, &error);
+    assert(error == NULL);
+
+    // XXX start acquisition on users request!
+    arv_camera_start_acquisition(camera, &error);
+//    arv_camera_stop_acquisition(camera, &error);
+    assert(error == NULL);
+
+    g_signal_connect(stream, "new-buffer", G_CALLBACK(Camera::newBufferCallback), this);
+
 }
 
 void Camera::stopVideo(void) {
     D("camera name %s\n", deviceId);
 
     assert(camera != NULL);
+
+    if (ARV_IS_STREAM(stream)) {
+        arv_stream_set_emit_signals(stream, FALSE);
+    }
+
+	g_clear_object(&stream);
+
+//	g_clear_object (&viewer->last_buffer);
+
+    GError *error = NULL;
+    if (ARV_IS_CAMERA(camera)) {
+        arv_camera_stop_acquisition(camera, &error);
+        if (error != NULL) {
+            E("arv_camera_stop_acquisition() failed : %s\n", (error != NULL) ? error->message : "???");
+            assert(error == NULL);
+            g_clear_error(&error);
+        }
+    }
+}
+
+void Camera::controlLostCallback(void *_userData) {
+    D("\n");
+
+    assert(_userData != NULL);
+    Camera *camera = (Camera *)_userData;
+
+    E("camera %s control lost\n", camera->deviceId);
+    camera->connected = false;
+
+    // WHAT TO DO HERE?!?
+    // XXX: handle this more gracefully!
+    assert(1 == 0);
+
+//	cancel = true;
+}
+
+void Camera::streamCallback(void *_userData, ArvStreamCallbackType _type, ArvBuffer *_buffer) {
+    D("\n");
+
+    (void)_userData;
+    (void)_buffer;
+    if (_type == ARV_STREAM_CALLBACK_TYPE_INIT) {
+		if (! arv_make_thread_realtime (10) &&
+		    ! arv_make_thread_high_priority (-10))
+			E("Failed to make stream thread high priority");
+	}
+}
+
+void Camera::newBufferCallback(ArvStream *_stream, void *_userData) {
+    ArvBuffer *buffer;
+	gint n_input_buffers, n_output_buffers;
+
+    assert(_stream != NULL);
+    assert(_userData != NULL);
+    Camera *camera = (Camera *)_userData;
+
+	buffer = arv_stream_pop_buffer(_stream);
+    if (buffer == NULL) {
+        return;
+    }
+
+	arv_stream_get_n_buffers(_stream, &n_input_buffers, &n_output_buffers);
+	D("have %d in, %d out buffers \n", n_input_buffers, n_output_buffers);
+
+    if (arv_buffer_get_status(buffer) == ARV_BUFFER_STATUS_SUCCESS) {
+		size_t size;
+		arv_buffer_get_data(buffer, &size);
+        camera->numImages++;
+        camera->numBytes += size;
+        D("push handled buffer\n");
+        arv_stream_push_buffer(_stream, buffer);
+    } else {
+        camera->numErrors++;
+        E("push discarded buffer\n");
+		arv_stream_push_buffer(_stream, buffer);
+    }
 }
