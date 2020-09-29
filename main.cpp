@@ -215,7 +215,7 @@ int main(int, char**)
         "{\n"
         "    Out_Color = Frag_Color * texture(Texture, Frag_UV.st);\n"
         "}\n";
-#else
+#elif 1
     const GLchar* vertex_shader =
         "uniform mat4 ProjMtx;\n"
         "in vec2 Position;\n"
@@ -241,6 +241,7 @@ int main(int, char**)
 //        "    Out_Color = Frag_Color * texture(Texture, Frag_UV.st);\n"
 // take red component as index (any r, g, or b should do..)
             "    Out_Color = colormap(texture(Texture, Frag_UV.st).r);\n"
+//            "    Out_Color = colormap(0.0);\n"
         "}\n"
         "\n"
         "float colormap_red(float x) {\n"
@@ -274,6 +275,48 @@ int main(int, char**)
         "    return vec4(r, g, b, 1.0);\n"
         "}\n"
         "\n";
+#else
+    const GLchar* vertex_shader =
+        "in vec3 aPos;\n" // the position variable has attribute position 0
+        "\n"
+        "out vec4 vertexColor;\n" // specify a color output to the fragment shader
+        "\n"
+        "void main()\n"
+        "{\n"
+        "    gl_Position = vec4(aPos, 1.0);\n"              // see how we directly give a vec3 to vec4's constructor
+        "    vertexColor = vec4(0.5, 0.0, 0.0, 1.0);\n" // set the output variable to a dark-red color
+        "}\n";
+
+    const GLchar* fragment_shader =
+        "out vec4 FragColor;\n"
+        "\n"
+        "in vec4 vertexColor;\n" // the input variable from the vertex shader (same name and same type)
+        "\n"
+        "void main()\n"
+        "{\n"
+        "    FragColor = vertexColor;\n"
+        "}\n";
+#endif
+
+#if 0
+    //TRIANGLE CREATION//
+    float Tvertices[] = {
+        -0.5f, -0.5f, 0.0f,
+         0.5f, -0.5f, 0.0f,
+         0.0f,  0.5f, 0.0f
+    };
+
+    unsigned int Tvbo, Tvao;
+    glGenVertexArrays(1, &Tvao);
+    glGenBuffers(1, &Tvbo);
+    glBindVertexArray(Tvao);
+    glBindBuffer(GL_ARRAY_BUFFER, Tvbo);
+    glBufferData(GL_ARRAY_BUFFER, sizeof(Tvertices), Tvertices, GL_STATIC_DRAW);
+    glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, 3 * sizeof(float), (void*)0);
+    glEnableVertexAttribArray(0);
+
+    glBindBuffer(GL_ARRAY_BUFFER, 0);
+    glBindVertexArray(0);
 #endif
 
     // Create shaders
@@ -301,19 +344,20 @@ int main(int, char**)
     glGenFramebuffers(1, &framebuffer);
     glBindFramebuffer(GL_FRAMEBUFFER, framebuffer);
     // create a color attachment texture
-//    unsigned int textureColorbuffer;
-    GLuint imageTexture = 0;
-    glGenTextures(1, &imageTexture);
-    glBindTexture(GL_TEXTURE_2D, imageTexture);
+    unsigned int textureColorbuffer;
+    glGenTextures(1, &textureColorbuffer);
+    glBindTexture(GL_TEXTURE_2D, textureColorbuffer);
     glTexImage2D(GL_TEXTURE_2D, 0, GL_RGB, 1280, 720, 0, GL_RGB, GL_UNSIGNED_BYTE, NULL);
     glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
     glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
-    glFramebufferTexture2D(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT0, GL_TEXTURE_2D, imageTexture, 0);
+    glFramebufferTexture2D(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT0, GL_TEXTURE_2D, textureColorbuffer, 0);
     // now that we actually created the framebuffer and added all attachments we want to check if it is actually complete now
     if (glCheckFramebufferStatus(GL_FRAMEBUFFER) != GL_FRAMEBUFFER_COMPLETE) {
         fprintf(stderr, "ERROR::FRAMEBUFFER:: Framebuffer is not complete!");
     }
     glBindFramebuffer(GL_FRAMEBUFFER, 0);
+
+    GLuint imageTexture = 0;
 
     // Main loop
     while (!glfwWindowShouldClose(window))
@@ -395,19 +439,19 @@ int main(int, char**)
 //            cam->error_count = 0;
 //            cam->transferred = 0;
 
-//            if (! imageTexture) {
-//                // Create a OpenGL texture identifier
-//                glGenTextures(1, &imageTexture);
-//                glBindTexture(GL_TEXTURE_2D, imageTexture);
+            if (! imageTexture) {
+                // Create a OpenGL texture identifier
+                glGenTextures(1, &imageTexture);
+                glBindTexture(GL_TEXTURE_2D, imageTexture);
 
-//                // Setup filtering parameters for display
-//                // glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
-//                // glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
-//                glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
-//                glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
-//                // Upload pixels into texture
-//                glPixelStorei(GL_UNPACK_ROW_LENGTH, 0);
-//            }
+                // Setup filtering parameters for display
+                // glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
+                // glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
+                glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
+                glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
+                // Upload pixels into texture
+                glPixelStorei(GL_UNPACK_ROW_LENGTH, 0);
+            }
 
             // render
             // ------
@@ -420,8 +464,10 @@ int main(int, char**)
             //glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
 
             glUseProgram(shaderHandle);
-
+#if 1
             if (cam->imageUpdated) {
+                glBindTexture(GL_TEXTURE_2D, textureColorbuffer);
+
 //                if (cam->image_depth == 1) {
 //                    glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA, cam->image_width, cam->image_height, 0, GL_RED, GL_UNSIGNED_BYTE, cam->image_data);
 //                } else if (cam->image_depth == 2) {
@@ -429,8 +475,8 @@ int main(int, char**)
 //                }
                 if (! cam->applyColorMap) {
                     // we expect a R8, no alpha, type of pixel data
-                    //glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA, cam->imageWidth, cam->imageHeight, 0, GL_RED, GL_UNSIGNED_BYTE, cam->imageData);
-                    glTexImage2D(GL_TEXTURE_2D, 0, GL_RGB, cam->imageWidth, cam->imageHeight, 0, GL_RED, GL_UNSIGNED_BYTE, cam->imageData);
+                    glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA, cam->imageWidth, cam->imageHeight, 0, GL_RED, GL_UNSIGNED_BYTE, cam->imageData);
+                    //glTexImage2D(GL_TEXTURE_2D, 0, GL_RGB, cam->imageWidth, cam->imageHeight, 0, GL_RED, GL_UNSIGNED_BYTE, cam->imageData);
                 } else {
                     // we expect a RGB, no alpha, type of pixel data
                     glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA, cam->imageWidth, cam->imageHeight, 0, GL_RGBA, GL_UNSIGNED_BYTE, cam->imageData);
@@ -438,19 +484,49 @@ int main(int, char**)
                 int glError = glGetError();
                 fprintf(stderr, "glGetError() returned 0x%04X\n", glError);
                 assert(glError == 0);
+
+//                glDrawArrays(GL_POINTS, 0, cam->imageSize);
+//                glError = glGetError();
+//                fprintf(stderr, "glGetError() returned 0x%04X\n", glError);
+//                assert(glError == 0);
+
                 cam->imageUpdated = false;
             }
+#else
+            glBindVertexArray(Tvao);
+            glDrawArrays(GL_TRIANGLES, 0, 3);
 
+#endif
             // now bind back to default framebuffer and draw a quad plane with the attached framebuffer color texture
             glBindFramebuffer(GL_FRAMEBUFFER, 0);
 
             ImGui::Text("pointer = %p", (void*)(intptr_t)imageTexture);
             // original image
-            ImGui::Image((void*)(intptr_t)imageTexture, ImVec2(cam->imageWidth, cam->imageHeight));
+            //ImGui::Image((void*)(intptr_t)imageTexture, ImVec2(cam->imageWidth, cam->imageHeight));
+
             // FBO image
+#if 0
+            ImGui::Image((void*)(intptr_t)imageTexture, ImVec2(cam->imageWidth, cam->imageHeight));
+#else
+            // Image primitives
+            // - Read FAQ to understand what ImTextureID is.
+            // - "p_min" and "p_max" represent the upper-left and lower-right corners of the rectangle.
+            // - "uv_min" and "uv_max" represent the normalized texture coordinates to use for those corners. Using (0,0)->(1,1) texture coordinates will generally display the entire texture.
+//            IMGUI_API void  AddImage(ImTextureID user_texture_id,
+//            const ImVec2& p_min, const ImVec2& p_max,
+//            const ImVec2& uv_min = ImVec2(0, 0), const ImVec2& uv_max = ImVec2(1, 1),
+//            ImU32 col = IM_COL32_WHITE);
 
-//            ImGui::Image((void*)(intptr_t)fboTexture, ImVec2(cam->imageWidth, cam->imageHeight));
-
+//            ImVec2 pos = ImGui::GetCursorScreenPos();
+            ImGui::GetWindowDrawList()->AddImage(
+//                (void*)(intptr_t)imageTexture,
+                (void*)(intptr_t)textureColorbuffer,
+                ImVec2(ImGui::GetCursorScreenPos()),
+//                        ImVec2(ImGui::GetCursorScreenPos().x + ImGui::GetWindowWidth()/2, ImGui::GetCursorScreenPos().y + ImGui::GetWindowHeight()/2)
+                ImVec2(ImGui::GetCursorScreenPos().x + cam->imageWidth, ImGui::GetCursorScreenPos().y + cam->imageHeight)
+//              ,ImVec2(0, 1), ImVec2(1, 0)
+                );
+#endif
             ImGui::End();
         }
 
