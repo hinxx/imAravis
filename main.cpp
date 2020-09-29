@@ -324,8 +324,8 @@ int main(int, char**)
         "}\n";
 #endif
 
-#if 1
     //TRIANGLE CREATION//
+#if 0
     float Tvertices[] = {
         -0.5f, -0.5f, 0.0f,
          0.5f, -0.5f, 0.0f,
@@ -353,23 +353,64 @@ int main(int, char**)
     glBufferData(GL_ARRAY_BUFFER, sizeof(Tvertices2), Tvertices2, GL_STATIC_DRAW);
     glVertexAttribPointer(1, 2, GL_FLOAT, GL_FALSE, 2 * sizeof(float), (void*)0);
     glEnableVertexAttribArray(1);
-
+    glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, 0);
     glBindBuffer(GL_ARRAY_BUFFER, 0);
     glBindVertexArray(0);
 
-//    unsigned int Tvbo2, Tvao2;
-//    glGenVertexArrays(1, &Tvao2);
-//    glGenBuffers(1, &Tvbo2);
-//    glBindVertexArray(Tvao2);
-//    glBindBuffer(GL_ARRAY_BUFFER, Tvbo2);
-//    glBufferData(GL_ARRAY_BUFFER, sizeof(Tvertices2), Tvertices2, GL_STATIC_DRAW);
-//    glVertexAttribPointer(1, 2, GL_FLOAT, GL_FALSE, 2 * sizeof(float), (void*)0);
-//    glEnableVertexAttribArray(1);
-
-//    glBindBuffer(GL_ARRAY_BUFFER, 0);
-//    glBindVertexArray(0);
-
 #endif
+
+    //RECTANGLE CREATION//
+
+    // half size
+//    float vertices0[] = {
+//         0.5f,  0.5f, 0.0f,  // top right
+//         0.5f, -0.5f, 0.0f,  // bottom right
+//        -0.5f, -0.5f, 0.0f,  // bottom left
+//        -0.5f,  0.5f, 0.0f   // top left
+//    };
+
+    // full size
+    float vertices[] = {
+         1.0f,  1.0f, 0.0f,  // top right
+         1.0f, -1.0f, 0.0f,  // bottom right
+        -1.0f, -1.0f, 0.0f,  // bottom left
+        -1.0f,  1.0f, 0.0f   // top left
+    };
+    unsigned int indices[] = {  // note that we start from 0!
+        0, 1, 3,   // first triangle
+        1, 2, 3    // second triangle
+    };
+
+    // texture
+    float Tvertices2[] = {
+        1.0f,   1.0f,
+        1.0f,   0.0f,
+        0.0f,   0.0f,
+        0.0f,   1.0f
+    };
+
+    unsigned int vbo2, vbo, vao;
+    unsigned int EBO;
+    glGenBuffers(1, &EBO);
+    glGenVertexArrays(1, &vao);
+    glGenBuffers(1, &vbo);
+    glBindVertexArray(vao);
+    glBindBuffer(GL_ARRAY_BUFFER, vbo);
+    glBufferData(GL_ARRAY_BUFFER, sizeof(vertices), vertices, GL_STATIC_DRAW);
+    glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, EBO);
+    glBufferData(GL_ELEMENT_ARRAY_BUFFER, sizeof(indices), indices, GL_STATIC_DRAW);
+    glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, 3 * sizeof(float), (void*)0);
+    glEnableVertexAttribArray(0);
+
+    glGenBuffers(1, &vbo2);
+    glBindBuffer(GL_ARRAY_BUFFER, vbo2);
+    glBufferData(GL_ARRAY_BUFFER, sizeof(Tvertices2), Tvertices2, GL_STATIC_DRAW);
+    glVertexAttribPointer(1, 2, GL_FLOAT, GL_FALSE, 2 * sizeof(float), (void*)0);
+    glEnableVertexAttribArray(1);
+
+    glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, 0);
+    glBindBuffer(GL_ARRAY_BUFFER, 0);
+    glBindVertexArray(0);
 
     // Create shaders
     const GLchar* vertex_shader_with_version[2] = { g_glsl_version, vertex_shader };
@@ -550,9 +591,16 @@ int main(int, char**)
                 cam->imageUpdated = false;
             }
 //#else
-            glBindVertexArray(Tvao);
+            // triangle
+//            glBindVertexArray(Tvao);
+//            glBindTexture(GL_TEXTURE_2D, imageTexture);
+//            glDrawArrays(GL_TRIANGLES, 0, 3);
+
+            // rectangle
+            glBindVertexArray(vao);
+            glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, EBO);
             glBindTexture(GL_TEXTURE_2D, imageTexture);
-            glDrawArrays(GL_TRIANGLES, 0, 3);
+            glDrawElements(GL_TRIANGLES, 6, GL_UNSIGNED_INT, 0);
 
 #endif
             // now bind back to default framebuffer and draw a quad plane with the attached framebuffer color texture
