@@ -2,7 +2,11 @@
 // If you are new to dear imgui, see examples/README.txt and documentation at the top of imgui.cpp.
 // (GLFW is a cross-platform general purpose library for handling windows, inputs, OpenGL/Vulkan/Metal graphics context creation, etc.)
 
+
 #include "imgui.h"
+// for PushItemFlag(), ImGuiItemFlags_Disabled
+#include "imgui_internal.h"
+
 #include "imgui_impl_glfw.h"
 #include "imgui_impl_opengl3.h"
 #include <stdio.h>
@@ -457,44 +461,138 @@ int main(int, char**)
 
             ImGui::Separator();
 
-            // selected camera info
-            Camera *cam = viewer->camera;
-            if (cam && cam->connected) {
-                ImGui::Text("Device %s", cam->deviceId);
+            ImGui::End();
+        }
 
-                ImGui::Text("Binning available %s", cam->binningAvailable ? "YES" : "NO");
+        Camera *cam = viewer->camera;
+        if (cam) {
+            // selected camera info
+            ImGui::Begin(viewer->selectedCamera);
+
+            if (cam->connected) {
+                ImGui::Text("Device name %s", cam->deviceId);
+                ImGui::Text("Image payload %d bytes", cam->imagePayload);
+
+                ImGui::Text("Binning in %savailable", cam->binningAvailable ? "" : "not ");
                 if (cam->binningAvailable) {
-                    ImGui::Text("Binning X min %d, max %d, step %d", cam->xBinning.min, cam->xBinning.max, cam->xBinning.step);
-                    ImGui::Text("Binning Y min %d, max %d, step %d", cam->yBinning.min, cam->yBinning.max, cam->yBinning.step);
+                    ImGui::AlignTextToFramePadding();
+                    ImGui::SetNextItemWidth(200);
+                    ImGui::SliderInt("Binning X", &cam->xBinning.value, cam->xBinning.min, cam->xBinning.max, "%u", ImGuiSliderFlags_AlwaysClamp);
+                    ImGui::SameLine();
+                    ImGui::Text("(%u - %u, +/- %u)", cam->xBinning.min, cam->xBinning.max, cam->xBinning.step);
+
+                    ImGui::AlignTextToFramePadding();
+                    ImGui::SetNextItemWidth(200);
+                    ImGui::SliderInt("Binning Y", &cam->yBinning.value, cam->yBinning.min, cam->yBinning.max, "%u", ImGuiSliderFlags_AlwaysClamp);
+                    ImGui::SameLine();
+                    ImGui::Text("(%u - %u, +/- %u)", cam->yBinning.min, cam->yBinning.max, cam->yBinning.step);
                 }
 
-                ImGui::Text("Offset X min %d, max %d, step %d", cam->xOffset.min, cam->xOffset.max, cam->xOffset.step);
-                ImGui::Text("Offset Y min %d, max %d, step %d", cam->yOffset.min, cam->yOffset.max, cam->yOffset.step);
-                ImGui::Text("Size X min %d, max %d, step %d", cam->xSize.min, cam->xSize.max, cam->xSize.step);
-                ImGui::Text("Size Y min %d, max %d, step %d", cam->ySize.min, cam->ySize.max, cam->ySize.step);
+                ImGui::AlignTextToFramePadding();
+                ImGui::SetNextItemWidth(200);
+                ImGui::SliderInt("Offset X", &cam->xOffset.value, cam->xOffset.min, cam->xOffset.max, "%u", ImGuiSliderFlags_AlwaysClamp);
+                ImGui::SameLine();
+                ImGui::Text("(%u - %u, +/- %u)", cam->xOffset.min, cam->xOffset.max, cam->xOffset.step);
+
+                ImGui::AlignTextToFramePadding();
+                ImGui::SetNextItemWidth(200);
+                ImGui::SliderInt("Offset Y", &cam->yOffset.value, cam->yOffset.min, cam->yOffset.max, "%u", ImGuiSliderFlags_AlwaysClamp);
+                ImGui::SameLine();
+                ImGui::Text("(%u - %u, +/- %u)", cam->yOffset.min, cam->yOffset.max, cam->yOffset.step);
+
+                ImGui::AlignTextToFramePadding();
+                ImGui::SetNextItemWidth(200);
+                ImGui::SliderInt("Size X", &cam->xSize.value, cam->xSize.min, cam->xSize.max, "%u", ImGuiSliderFlags_AlwaysClamp);
+                ImGui::SameLine();
+                ImGui::Text("(%u - %u, +/- %u)", cam->xSize.min, cam->xSize.max, cam->xSize.step);
+
+                ImGui::AlignTextToFramePadding();
+                ImGui::SetNextItemWidth(200);
+                ImGui::SliderInt("Size Y", &cam->ySize.value, cam->ySize.min, cam->ySize.max, "%u", ImGuiSliderFlags_AlwaysClamp);
+                ImGui::SameLine();
+                ImGui::Text("(%u - %u, +/- %u)", cam->ySize.min, cam->ySize.max, cam->ySize.step);
+                // ImGui::Separator();
 
                 ImGui::Text("Number of pixels formats %d", cam->numPixelFormats);
-                for (unsigned int i = 0; i < cam->numPixelFormats; i++) {
-                    ImGui::Text("%s (0x%08lX)", cam->pixelFormatStrings[i], cam->pixelFormats[i]);
+//                for (unsigned int i = 0; i < cam->numPixelFormats; i++) {
+//                    ImGui::Text("%s (0x%08lX)", cam->pixelFormatStrings[i], cam->pixelFormats[i]);
+//                }
+//                ImGui::Text("Selected pixels format %s (0x%08X)", cam->pixelFormatString, cam->pixelFormat);
+                ImGui::AlignTextToFramePadding();
+                ImGui::SetNextItemWidth(200);
+                ImGui::Combo("Pixel format", &cam->pixelFormatCurrent, cam->pixelFormatStrings, cam->numPixelFormats);
+                ImGui::Separator();
+
+                // ImGui::Text("Frame rate is %savailable", cam->frameRateAvailable ? "" : "not ");
+                if (cam->frameRateAvailable) {
+                    ImGui::AlignTextToFramePadding();
+                    ImGui::SetNextItemWidth(200);
+                    ImGui::SliderFloat("Frame rate", &cam->frameRate.value, cam->frameRate.min, cam->frameRate.max, "%.3f", ImGuiSliderFlags_AlwaysClamp);
+                    ImGui::SameLine();
+                    ImGui::Text("(%.3f - %.3f, +/- %.3f)", cam->frameRate.min, cam->frameRate.max, cam->frameRate.step);
                 }
-                ImGui::Text("Selected pixels format %s (0x%08X)", cam->pixelFormatString, cam->pixelFormat);
+
+                // ImGui::Text("Gain is %savailable", cam->gainAvailable ? "" : "not ");
+                if (cam->gainAvailable) {
+                    // ImGui::Text("Gain auto is %savailable", cam->gainAutoAvailable ? "" : "not ");
+                    ImGui::AlignTextToFramePadding();
+                    ImGui::SetNextItemWidth(200);
+                    if (cam->gainAuto) {
+                        ImGui::PushItemFlag(ImGuiItemFlags_Disabled, true);
+                        ImGui::PushStyleVar(ImGuiStyleVar_Alpha, ImGui::GetStyle().Alpha * 0.5f);
+                    }
+                    ImGui::SliderFloat("Gain", &cam->gain.value, cam->gain.min, cam->gain.max, "%.3f", ImGuiSliderFlags_AlwaysClamp);
+                    ImGui::SameLine();
+                    ImGui::Text("(%.3f - %.3f, +/- %.3f)", cam->gain.min, cam->gain.max, cam->gain.step);
+                    if (cam->gainAuto) {
+                        ImGui::PopItemFlag();
+                        ImGui::PopStyleVar();
+                    }
+                    if (cam->gainAutoAvailable) {
+                        ImGui::SameLine();
+                        ImGui::Checkbox("Gain auto", &cam->gainAuto);
+                    }
+                }
+                // ImGui::Separator();
+
+                // ImGui::Text("Exposure is %savailable", cam->exposureAvailable ? "" : "not ");
+                if (cam->exposureAvailable) {
+                    // ImGui::Text("Exposure auto is %savailable", cam->exposureAutoAvailable ? "" : "not ");
+                    ImGui::AlignTextToFramePadding();
+                    ImGui::SetNextItemWidth(200);
+                    if (cam->exposureAuto) {
+                        ImGui::PushItemFlag(ImGuiItemFlags_Disabled, true);
+                        ImGui::PushStyleVar(ImGuiStyleVar_Alpha, ImGui::GetStyle().Alpha * 0.5f);
+                    }
+                    ImGui::SliderFloat("Exposure", &cam->exposure.value, cam->exposure.min, cam->exposure.max, "%.3f ms", ImGuiSliderFlags_AlwaysClamp);
+                    ImGui::SameLine();
+                    ImGui::Text("(%.3f - %.3f, +/- %.3f)", cam->exposure.min, cam->exposure.max, cam->exposure.step);
+                    if (cam->exposureAuto) {
+                        ImGui::PopItemFlag();
+                        ImGui::PopStyleVar();
+                    }
+                    if (cam->exposureAutoAvailable) {
+                        ImGui::SameLine();
+                        ImGui::Checkbox("Exposure auto", &cam->exposureAuto);
+                    }
+                }
+                ImGui::Separator();
 
                 if (ImGui::Button("Start")) {
-                    //arv_camera_start_acquisition(cam->camera, NULL);
-                    //cam->acquiring = true;
                     cam->startVideo();
                 }
                 ImGui::SameLine();
                 if (ImGui::Button("Stop")) {
-//                    arv_camera_stop_acquisition(cam->camera, NULL);
-//                    cam->acquiring = false;
                     cam->stopVideo();
                 }
+                ImGui::Separator();
+
             } else {
-                ImGui::Text("Device not connected.");
+                ImGui::Text("Camera %s not connected.", cam->deviceId);
             }
 
             ImGui::End();
+
         }
 #if 0
         {

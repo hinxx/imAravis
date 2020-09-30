@@ -1,18 +1,22 @@
 #include "viewer.h"
 #include "debug.h"
+
 #include <assert.h>
+#include <stdlib.h>
 
 Viewer::Viewer() {
 //    selectedCamera = -1;
     camera = NULL;
+    selectedCamera = NULL;
     cameras.clear();
 }
 
 Viewer::~Viewer() {
     if (camera) {
-        // stop the activity..
+        camera->stop();
     }
     clearCameraList();
+    free(selectedCamera);
 }
 
 void Viewer::addCamera(const unsigned int _index, const char *_protocol, const char *_deviceId, const char *_vendor, const char *_model, const char *_serialNumber, const char *_physicalId) {
@@ -52,6 +56,12 @@ void Viewer::selectCamera(const unsigned int _index) {
         // already selected
         return;
     }
+
+    if (selectedCamera) {
+        free(selectedCamera);
+    }
+    selectedCamera = (char *)calloc(1, strlen(cam->deviceId) + strlen(cam->serialNumber) + 5);
+    sprintf(selectedCamera, "%s - %s", cam->deviceId, cam->serialNumber);
 
     // stop the current device
     stopCamera();
@@ -141,118 +151,12 @@ void Camera::start(void) {
     // arv_camera_set_chunk_mode() might have set the error if the feature is missing
     g_clear_error(&error);
 
-    int x, y, width, height;
-	int dx, dy;
-	int min, max;
-	int step;
-
-    // XXX: handle possible error state!
-    arv_camera_get_region(camera, &x, &y, &width, &height, &error);
-    assert(error == NULL);
-	arv_camera_get_binning(camera, &dx, &dy, &error);
-    assert(error == NULL);
-    // binning
-    arv_camera_get_x_binning_bounds(camera, &min, &max, &error);
-    assert(error == NULL);
-	step = arv_camera_get_x_binning_increment(camera, &error);
-    assert(error == NULL);
-    xBinning.value = dx;
-    xBinning.min = min;
-    xBinning.max = max;
-    xBinning.step = step;
-    arv_camera_get_y_binning_bounds(camera, &min, &max, &error);
-    assert(error == NULL);
-	step = arv_camera_get_y_binning_increment(camera,  &error);
-    assert(error == NULL);
-    yBinning.value = dy;
-    yBinning.min = min;
-    yBinning.max = max;
-    yBinning.step = step;
-    // offset
-    arv_camera_get_x_offset_bounds(camera, &min, &max, &error);
-    assert(error == NULL);
-	step = arv_camera_get_x_offset_increment(camera, &error);
-    assert(error == NULL);
-    xOffset.value = x;
-    xOffset.min = min;
-    xOffset.max = max;
-    xOffset.step = step;
-    arv_camera_get_y_offset_bounds(camera, &min, &max, &error);
-    assert(error == NULL);
-	step = arv_camera_get_y_offset_increment(camera, &error);
-    assert(error == NULL);
-    yOffset.value = y;
-    yOffset.min = min;
-    yOffset.max = max;
-    yOffset.step = step;
-    // size
-    arv_camera_get_width_bounds(camera, &min, &max, &error);
-    assert(error == NULL);
-	step = arv_camera_get_width_increment(camera, &error);
-    assert(error == NULL);
-    xSize.value = width;
-    xSize.min = min;
-    xSize.max = max;
-    xSize.step = step;
-    arv_camera_get_height_bounds(camera, &min, &max, &error);
-    assert(error == NULL);
-	step = arv_camera_get_height_increment(camera, &error);
-    assert(error == NULL);
-    ySize.value = height;
-    ySize.min = min;
-    ySize.max = max;
-    ySize.step = step;
-
-    // pixels formats
-    unsigned int pixelFormatCnt = 0;
-    pixelFormats = arv_camera_dup_available_pixel_formats(camera, &pixelFormatCnt, &error);
-    assert(error == NULL);
-    unsigned int numValidFormats = 0;
-    unsigned int pixelFormatStringCnt = 0;
-    pixelFormatStrings = arv_camera_dup_available_pixel_formats_as_strings(camera, &pixelFormatStringCnt, &error);
-    assert(error == NULL);
-	g_assert (pixelFormatCnt == pixelFormatStringCnt);
-//    pixelFormatString = strdup(arv_camera_get_pixel_format_as_string(camera, &error));
-    pixelFormatString = arv_camera_get_pixel_format_as_string(camera, &error);
-    assert(error == NULL);
-    for (unsigned int i = 0; i < pixelFormatCnt; i++) {
-		if (arv_pixel_format_to_gst_caps_string(pixelFormats[i]) != NULL) {
-            D("[%d] pixel format string %s\n", i, pixelFormatStrings[i]);
-            numValidFormats++;
-		}
-	}
-    D("selected pixel format string %s\n", pixelFormatString);
-    numPixelFormats = numValidFormats;
-    pixelFormat = arv_camera_get_pixel_format(camera, &error);
-    assert(error == NULL);
-
-    binningAvailable = arv_camera_is_binning_available(camera, &error);
-    assert(error == NULL);
-
-    //g_signal_connect (arv_camera_get_device (viewer->camera), "control-lost", G_CALLBACK (control_lost_cb), viewer);
+    if (! infoQuery()) {
+        stop();
+        return;
+    }
 
     g_signal_connect(arv_camera_get_device(camera), "control-lost", G_CALLBACK(Camera::controlLostCallback), this);
-
-//    arv_camera_set_region(camera, 0, 0, arv_option_width, arv_option_height, NULL);
-//    arv_camera_set_binning(camera, arv_option_horizontal_binning, arv_option_vertical_binning, NULL);
-//    arv_camera_set_exposure_time(camera, arv_option_exposure_time_us, NULL);
-//    arv_camera_set_gain(camera, arv_option_gain, NULL);
-
-//    if (arv_camera_is_gv_device(camera)) {
-//        arv_camera_gv_select_stream_channel(camera, arv_option_gv_stream_channel, NULL);
-//        arv_camera_gv_set_packet_delay(camera, arv_option_gv_packet_delay, NULL);
-//        arv_camera_gv_set_packet_size(camera, arv_option_gv_packet_size, NULL);
-//        arv_camera_gv_set_stream_options(camera, arv_option_no_packet_socket ?
-//                          ARV_GV_STREAM_OPTION_PACKET_SOCKET_DISABLED :
-//                          ARV_GV_STREAM_OPTION_NONE);
-//    }
-
-//    int width, height;
-//    arv_camera_get_region(camera, &x, &y, &width, &height, NULL);
-//    arv_camera_get_binning(camera, &dx, &dy, NULL);
-//    exposure = arv_camera_get_exposure_time(camera, NULL);
-//    payload = arv_camera_get_payload(camera, NULL);
-//    gain = arv_camera_get_gain(camera, NULL);
 
     connected = true;
 }
@@ -364,6 +268,175 @@ void Camera::stopVideo(void) {
         }
     }
 }
+
+bool Camera::infoQuery(void) {
+    D("\n");
+
+    GError *error = NULL;
+    int x, y, width, height;
+	int dx, dy;
+	int min, max;
+	int step;
+
+    // XXX: handle possible error state!
+
+    arv_camera_get_region(camera, &x, &y, &width, &height, &error);
+    assert(error == NULL);
+    arv_camera_get_width_bounds(camera, &min, &max, &error);
+    assert(error == NULL);
+	step = arv_camera_get_width_increment(camera, &error);
+    assert(error == NULL);
+    xSize.value = width;
+    xSize.min = min;
+    xSize.max = max;
+    xSize.step = step;
+    arv_camera_get_height_bounds(camera, &min, &max, &error);
+    assert(error == NULL);
+	step = arv_camera_get_height_increment(camera, &error);
+    assert(error == NULL);
+    ySize.value = height;
+    ySize.min = min;
+    ySize.max = max;
+    ySize.step = step;
+
+    arv_camera_get_x_offset_bounds(camera, &min, &max, &error);
+    assert(error == NULL);
+	step = arv_camera_get_x_offset_increment(camera, &error);
+    assert(error == NULL);
+    xOffset.value = x;
+    xOffset.min = min;
+    xOffset.max = max;
+    xOffset.step = step;
+    arv_camera_get_y_offset_bounds(camera, &min, &max, &error);
+    assert(error == NULL);
+	step = arv_camera_get_y_offset_increment(camera, &error);
+    assert(error == NULL);
+    yOffset.value = y;
+    yOffset.min = min;
+    yOffset.max = max;
+    yOffset.step = step;
+
+    binningAvailable = arv_camera_is_binning_available(camera, &error);
+    assert(error == NULL);
+    arv_camera_get_binning(camera, &dx, &dy, &error);
+    assert(error == NULL);
+    arv_camera_get_x_binning_bounds(camera, &min, &max, &error);
+    assert(error == NULL);
+	step = arv_camera_get_x_binning_increment(camera, &error);
+    assert(error == NULL);
+    xBinning.value = dx;
+    xBinning.min = min;
+    xBinning.max = max;
+    xBinning.step = step;
+    arv_camera_get_y_binning_bounds(camera, &min, &max, &error);
+    assert(error == NULL);
+	step = arv_camera_get_y_binning_increment(camera,  &error);
+    assert(error == NULL);
+    yBinning.value = dy;
+    yBinning.min = min;
+    yBinning.max = max;
+    yBinning.step = step;
+
+    unsigned int pixelFormatCnt = 0;
+    pixelFormats = arv_camera_dup_available_pixel_formats(camera, &pixelFormatCnt, &error);
+    assert(error == NULL);
+    unsigned int numValidFormats = 0;
+    pixelFormatCurrent = 0;
+    unsigned int pixelFormatStringCnt = 0;
+    pixelFormatStrings = arv_camera_dup_available_pixel_formats_as_strings(camera, &pixelFormatStringCnt, &error);
+    assert(error == NULL);
+	g_assert (pixelFormatCnt == pixelFormatStringCnt);
+    pixelFormatString = arv_camera_get_pixel_format_as_string(camera, &error);
+    assert(error == NULL);
+    D("current pixel format string %s\n", pixelFormatString);
+    D("available pixel formats:\n");
+    for (unsigned int i = 0; i < pixelFormatCnt; i++) {
+		if (arv_pixel_format_to_gst_caps_string(pixelFormats[i]) != NULL) {
+            D("[%d] pixel format string %s\n", i, pixelFormatStrings[i]);
+            if (strncmp(pixelFormatString, pixelFormatStrings[i], strlen(pixelFormatString)) == 0) {
+                pixelFormatCurrent = i;
+            }
+            numValidFormats++;
+		}
+	}
+    numPixelFormats = numValidFormats;
+    pixelFormat = arv_camera_get_pixel_format(camera, &error);
+    assert(error == NULL);
+
+    double minf, maxf;
+    arv_camera_get_exposure_time_bounds(camera, &minf, &maxf, &error);
+    assert(error == NULL);
+    double _exposure = arv_camera_get_exposure_time(camera, &error);
+    assert(error == NULL);
+    exposure.value = _exposure;
+    exposure.min = minf;
+    exposure.max = maxf;
+    // set 10 ms step
+    exposure.step = 10.0;
+
+    arv_camera_get_gain_bounds(camera, &minf, &maxf, &error);
+    assert(error == NULL);
+    double _gain = arv_camera_get_gain(camera, &error);
+    assert(error == NULL);
+    gain.value = _gain;
+    gain.min = minf;
+    gain.max = maxf;
+    gain.step = 0.001;
+
+    frameRateAvailable = arv_camera_is_frame_rate_available(camera, &error);
+    assert(error == NULL);
+    arv_camera_get_frame_rate_bounds(camera, &minf, &maxf, &error);
+    assert(error == NULL);
+    double _frameRate = arv_camera_get_frame_rate(camera, &error);
+    assert(error == NULL);
+    frameRate.value = _frameRate;
+    frameRate.min = minf;
+    frameRate.max = maxf;
+    frameRate.step = 0.001;
+
+    gainAvailable = arv_camera_is_gain_available(camera, &error);
+    assert(error == NULL);
+    gainAuto = arv_camera_get_gain_auto(camera, &error) != ARV_AUTO_OFF;
+    assert(error == NULL);
+    gainAutoAvailable = arv_camera_is_gain_auto_available(camera, &error);
+    assert(error == NULL);
+
+    exposureAvailable = arv_camera_is_exposure_time_available(camera, &error);
+    assert(error == NULL);
+    exposureAuto = arv_camera_get_exposure_time_auto(camera, &error) != ARV_AUTO_OFF;
+    // might not be available
+    if ((error != NULL) && (error->code != ARV_DEVICE_ERROR_FEATURE_NOT_FOUND)) {
+        E("arv_camera_get_exposure_time_auto() failed : %s\n", (error != NULL) ? error->message : "");
+        assert(error == NULL);
+    }
+    g_clear_error(&error);
+    exposureAutoAvailable = arv_camera_is_exposure_auto_available(camera, &error);
+    assert(error == NULL);
+
+    imagePayload = arv_camera_get_payload(camera, &error);
+    assert(error == NULL);
+
+
+    // XXX not setting anything here!
+
+    //    arv_camera_set_region(camera, 0, 0, arv_option_width, arv_option_height, NULL);
+    //    arv_camera_set_binning(camera, arv_option_horizontal_binning, arv_option_vertical_binning, NULL);
+    //    arv_camera_set_exposure_time(camera, arv_option_exposure_time_us, NULL);
+    //    arv_camera_set_gain(camera, arv_option_gain, NULL);
+
+    //    if (arv_camera_is_gv_device(camera)) {
+    //        arv_camera_gv_select_stream_channel(camera, arv_option_gv_stream_channel, NULL);
+    //        arv_camera_gv_set_packet_delay(camera, arv_option_gv_packet_delay, NULL);
+    //        arv_camera_gv_set_packet_size(camera, arv_option_gv_packet_size, NULL);
+    //        arv_camera_gv_set_stream_options(camera, arv_option_no_packet_socket ?
+    //                          ARV_GV_STREAM_OPTION_PACKET_SOCKET_DISABLED :
+    //                          ARV_GV_STREAM_OPTION_NONE);
+    //    }
+
+
+    return true;
+}
+
 
 void Camera::controlLostCallback(void *_userData) {
     D("\n");

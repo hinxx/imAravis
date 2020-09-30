@@ -11,6 +11,13 @@ struct Parameter {
     int step;
 };
 
+struct ParameterF {
+    float value;
+    float min;
+    float max;
+    float step;
+};
+
 struct Camera {
     unsigned int index;
     char *protocol;
@@ -32,11 +39,24 @@ struct Camera {
     Parameter yOffset;
     Parameter xSize;
     Parameter ySize;
+    ParameterF exposure;
+    ParameterF gain;
+    bool frameRateAvailable;
+    ParameterF frameRate;
+
+    bool gainAvailable;
+    bool gainAuto;
+    bool gainAutoAvailable;
+    bool exposureAvailable;
+    bool exposureAuto;
+    bool exposureAutoAvailable;
+
     unsigned int numPixelFormats;
     long *pixelFormats;
     const char **pixelFormatStrings;
     const char *pixelFormatString;
     ArvPixelFormat pixelFormat;
+    int pixelFormatCurrent;
 
     bool autoSocketBuffer;
     bool packetResend;
@@ -44,6 +64,10 @@ struct Camera {
     unsigned int packetTimeout;
     unsigned int frameRetention;
     double packetRequestRatio;
+
+    unsigned int imagePayload;
+    unsigned int imageWidth;
+    unsigned int imageHeight;
 
     unsigned int numImages;
     unsigned int numBytes;
@@ -58,11 +82,13 @@ struct Camera {
     static void controlLostCallback(void *_userData);
     static void streamCallback(void *_userData, ArvStreamCallbackType _type, ArvBuffer *_buffer);
     static void newBufferCallback(ArvStream *_stream, void *_userData);
+    bool infoQuery(void);
 };
 
 struct Viewer {
     std::vector<Camera *> cameras;
     Camera *camera;
+    char *selectedCamera;
 
     Viewer(void);
     ~Viewer(void);
