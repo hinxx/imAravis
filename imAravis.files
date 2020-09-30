@@ -79,6 +79,8 @@ aravis/include/aravis-0.8/arvversion.h
 aravis/include/aravis-0.8/arvxmlschema.h
 aravis/include/aravis-0.8/arvzip.h
 aravis/share/aravis-0.8/arv-fake-camera.xml
+camera.cpp
+camera.h
 debug.h
 imAravis.cflags
 imAravis.cxxflags

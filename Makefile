@@ -17,6 +17,7 @@
 EXE = imAravis
 SOURCES = main.cpp
 SOURCES += imaravis.cpp
+SOURCES += camera.cpp
 SOURCES += viewer.cpp
 SOURCES += ./imgui/imgui_impl_glfw.cpp ./imgui/imgui_impl_opengl3.cpp
 SOURCES += ./imgui/imgui.cpp ./imgui/imgui_demo.cpp ./imgui/imgui_draw.cpp ./imgui/imgui_widgets.cpp
