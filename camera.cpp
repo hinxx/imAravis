@@ -4,14 +4,24 @@
 #include <assert.h>
 #include <stdlib.h>
 
-Camera::Camera(const unsigned int _index, const char *_protocol, const char *_deviceId, const char *_vendor, const char *_model, const char *_serialNumber, const char *_physicalId) {
+Camera::Camera(const unsigned int _index) {
+    D("\n");
+
     index = _index;
-    protocol = strdup(_protocol);
-    deviceId = strdup(_deviceId);
-    vendor = strdup(_vendor);
-    model = strdup(_model);
-    serialNumber = strdup(_serialNumber);
-    physicalId = strdup(_physicalId);
+
+    protocol = strdup(arv_get_device_protocol(index));
+    deviceId = strdup(arv_get_device_id(index));
+    vendor = strdup(arv_get_device_vendor(index));
+    model = strdup(arv_get_device_model(index));
+    serialNumber = strdup(arv_get_device_serial_nbr(index));
+    physicalId = strdup(arv_get_device_physical_id(index));
+    D("camera at index %d\n", index);
+    D(".. protocol  %s\n", protocol);
+    D(".. device    %s\n", deviceId);
+    D(".. vendor    %s\n", vendor);
+    D(".. model     %s\n", model);
+    D(".. serial #  %s\n", serialNumber);
+    D(".. phys. ID  %s\n", physicalId);
 
     camera = NULL;
     stream = NULL;
@@ -29,16 +39,16 @@ Camera::Camera(const unsigned int _index, const char *_protocol, const char *_de
 }
 
 Camera::~Camera(void) {
+    D("\n");
+
     stop();
-    index = 0;
+
     free(protocol);
     free(deviceId);
     free(vendor);
     free(model);
     free(serialNumber);
     free(physicalId);
-    camera = NULL;
-    stream = NULL;
 }
 
 void Camera::start(void) {
@@ -78,10 +88,6 @@ void Camera::start(void) {
 void Camera::stop(void) {
     D("camera name %s\n", deviceId);
 
-//    assert(camera != NULL);
-//    if (camera == NULL) {
-//        return;
-//    }
     if (! ARV_IS_CAMERA(camera)) {
         return;
     }
@@ -332,12 +338,6 @@ bool Camera::infoQuery(void) {
 
 
     // XXX not setting anything here!
-
-    //    arv_camera_set_region(camera, 0, 0, arv_option_width, arv_option_height, NULL);
-    //    arv_camera_set_binning(camera, arv_option_horizontal_binning, arv_option_vertical_binning, NULL);
-    //    arv_camera_set_exposure_time(camera, arv_option_exposure_time_us, NULL);
-    //    arv_camera_set_gain(camera, arv_option_gain, NULL);
-
     //    if (arv_camera_is_gv_device(camera)) {
     //        arv_camera_gv_select_stream_channel(camera, arv_option_gv_stream_channel, NULL);
     //        arv_camera_gv_set_packet_delay(camera, arv_option_gv_packet_delay, NULL);
@@ -408,4 +408,195 @@ void Camera::newBufferCallback(ArvStream *_stream, void *_userData) {
         E("push discarded buffer\n");
 		arv_stream_push_buffer(_stream, buffer);
     }
+}
+
+
+
+void Camera::setImageSize(const int _x, const int _y) {
+    GError *error = NULL;
+
+    arv_camera_set_region(camera, -1, -1, _x, _y, &error);
+    if (error != NULL) {
+        E("arv_camera_set_region() failed : %s\n", (error != NULL) ? error->message : "???");
+        assert(error == NULL);
+        g_clear_error(&error);
+    }
+    if (_x != -1) {
+        xSize.value = _x;
+    }
+    if (_y != -1) {
+        ySize.value = _y;
+    }
+
+    // image payload might have changed
+    imagePayload = arv_camera_get_payload(camera, &error);
+    if (error != NULL) {
+        E("arv_camera_get_payload() failed : %s\n", (error != NULL) ? error->message : "???");
+        assert(error == NULL);
+        g_clear_error(&error);
+    }
+}
+
+void Camera::setImageOffset(const int _x, const int _y) {
+    GError *error = NULL;
+
+    arv_camera_set_region(camera, _x, _y, -1, -1, &error);
+    if (error != NULL) {
+        E("arv_camera_set_region() failed : %s\n", (error != NULL) ? error->message : "???");
+        assert(error == NULL);
+        g_clear_error(&error);
+    }
+    if (_x != -1) {
+        xOffset.value = _x;
+    }
+    if (_y != -1) {
+        yOffset.value = _y;
+    }
+
+    // image payload might have changed
+    imagePayload = arv_camera_get_payload(camera, &error);
+    if (error != NULL) {
+        E("arv_camera_get_payload() failed : %s\n", (error != NULL) ? error->message : "???");
+        assert(error == NULL);
+        g_clear_error(&error);
+    }
+}
+
+void Camera::setImageBinning(const int _x, const int _y) {
+    GError *error = NULL;
+
+    arv_camera_set_binning(camera, _x, _y, &error);
+    if (error != NULL) {
+        E("arv_camera_set_binning() failed : %s\n", (error != NULL) ? error->message : "???");
+        assert(error == NULL);
+        g_clear_error(&error);
+    }
+    if (_x != -1) {
+        xBinning.value = _x;
+    }
+    if (_y != -1) {
+        yBinning.value = _y;
+    }
+
+    // image payload might have changed
+    imagePayload = arv_camera_get_payload(camera, &error);
+    if (error != NULL) {
+        E("arv_camera_get_payload() failed : %s\n", (error != NULL) ? error->message : "???");
+        assert(error == NULL);
+        g_clear_error(&error);
+    }
+}
+
+void Camera::setPixelFormat(const unsigned int _value) {
+    GError *error = NULL;
+
+    assert(_value < numPixelFormats);
+
+    arv_camera_set_pixel_format(camera, pixelFormats[_value], &error);
+    if (error != NULL) {
+        E("arv_camera_set_pixel_format() failed : %s\n", (error != NULL) ? error->message : "???");
+        assert(error == NULL);
+        g_clear_error(&error);
+    }
+    pixelFormatCurrent = _value;
+    pixelFormat = pixelFormats[pixelFormatCurrent];
+    pixelFormatString = pixelFormatStrings[pixelFormatCurrent];
+
+    // image payload might have changed with pixel format change
+    imagePayload = arv_camera_get_payload(camera, &error);
+    if (error != NULL) {
+        E("arv_camera_get_payload() failed : %s\n", (error != NULL) ? error->message : "???");
+        assert(error == NULL);
+        g_clear_error(&error);
+    }
+}
+
+void Camera::setFrameRate(const float _value) {
+    GError *error = NULL;
+
+    if (! frameRateAvailable) {
+        return;
+    }
+
+    arv_camera_set_frame_rate(camera, _value, &error);
+    if (error != NULL) {
+        E("arv_camera_set_frame_rate() failed : %s\n", (error != NULL) ? error->message : "???");
+        assert(error == NULL);
+        g_clear_error(&error);
+    }
+    frameRate.value = _value;
+}
+
+void Camera::setGainAuto(const bool _value) {
+    GError *error = NULL;
+
+    if (! gainAutoAvailable) {
+        return;
+    }
+
+    // XXX: handle ARV_AUTO_ONCE
+    ArvAuto value = ARV_AUTO_OFF;
+    if (_value) {
+        value = ARV_AUTO_CONTINUOUS;
+    }
+    arv_camera_set_gain_auto(camera, value, &error);
+    if (error != NULL) {
+        E("arv_camera_set_exposure_time_auto() failed : %s\n", (error != NULL) ? error->message : "???");
+        assert(error == NULL);
+        g_clear_error(&error);
+    }
+    gainAuto = _value;
+}
+
+void Camera::setGain(const float _value) {
+    GError *error = NULL;
+
+    if (gainAutoAvailable && gainAuto) {
+        return;
+    }
+
+    arv_camera_set_gain(camera, _value, &error);
+    if (error != NULL) {
+        E("arv_camera_set_gain() failed : %s\n", (error != NULL) ? error->message : "???");
+        assert(error == NULL);
+        g_clear_error(&error);
+    }
+    gain.value = _value;
+}
+
+void Camera::setExposureAuto(const bool _value) {
+    GError *error = NULL;
+
+    if (! exposureAutoAvailable) {
+        return;
+    }
+
+    // XXX: handle ARV_AUTO_ONCE
+    ArvAuto value = ARV_AUTO_OFF;
+    if (_value) {
+        value = ARV_AUTO_CONTINUOUS;
+    }
+    arv_camera_set_exposure_time_auto(camera, value, &error);
+    if (error != NULL) {
+        E("arv_camera_set_exposure_time_auto() failed : %s\n", (error != NULL) ? error->message : "???");
+        assert(error == NULL);
+        g_clear_error(&error);
+    }
+    exposureAuto = _value;
+}
+
+void Camera::setExposure(const float _value) {
+    GError *error = NULL;
+
+    if (exposureAutoAvailable && exposureAuto) {
+        return;
+    }
+
+    arv_camera_set_exposure_time(camera, _value, &error);
+    if (error != NULL) {
+        E("arv_camera_set_exposure_time() failed : %s\n", (error != NULL) ? error->message : "???");
+        assert(error == NULL);
+        g_clear_error(&error);
+    }
+    exposure.value = _value;
 }

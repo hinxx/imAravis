@@ -13,11 +13,21 @@ struct Viewer {
     Viewer(void);
     ~Viewer(void);
 
-    void addCamera(const unsigned int _index, const char *_protocol, const char *_deviceId, const char *_vendor, const char *_model, const char *_serialNumber, const char *_physicalId);
     void clearCameraList(void);
     void selectCamera(const unsigned int _index);
     void stopCamera(void);
     void startCamera(void);
+
+    void showCameraList(void);
+    void showCameraInfo(void);
+    void handleImageBinning(void);
+    void handleImageOffset(void);
+    void handleImageSize(void);
+    void handleImagePixelFormat(void);
+    void handleImageFrameRate(void);
+    void handleGain(void);
+    void handleExposure(void);
+
 };
 
 #endif // VIEWER_H

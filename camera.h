@@ -55,7 +55,7 @@ struct Camera {
     const char **pixelFormatStrings;
     const char *pixelFormatString;
     ArvPixelFormat pixelFormat;
-    int pixelFormatCurrent;
+    unsigned int pixelFormatCurrent;
 
     bool autoSocketBuffer;
     bool packetResend;
@@ -72,7 +72,7 @@ struct Camera {
     unsigned int numBytes;
     unsigned int numErrors;
 
-    Camera(const unsigned int _index, const char *_protocol, const char *_deviceId, const char *_vendor, const char *_model, const char *_serialNumber, const char *_physicalId);
+    Camera(const unsigned int _index);
     ~Camera(void);
     void stop(void);
     void start(void);
@@ -82,6 +82,17 @@ struct Camera {
     static void streamCallback(void *_userData, ArvStreamCallbackType _type, ArvBuffer *_buffer);
     static void newBufferCallback(ArvStream *_stream, void *_userData);
     bool infoQuery(void);
+
+    void setImageSize(const int _x, const int _y);
+    void setImageOffset(const int _x, const int _y);
+    void setImageBinning(const int _x, const int _y);
+    void setPixelFormat(const unsigned int _value);
+    void setFrameRate(const float _value);
+    void setGain(const float _value);
+    void setGainAuto(const bool _value);
+    void setExposure(const float _value);
+    void setExposureAuto(const bool _value);
+
 };
 
 #endif // CAMERA_H
