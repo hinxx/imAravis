@@ -11,6 +11,11 @@ struct Viewer {
     Camera *camera;
     char *selectedCamera;
     Image *image;
+    double timeout;
+    int numImages;
+    int numAllImages;
+    int numErrors;
+    double numBytes;
 
     Viewer(void);
     ~Viewer(void);
@@ -22,6 +27,8 @@ struct Viewer {
 
     void showCameraList(void);
     void showCameraInfo(void);
+    void showCameraImage(void);
+
     void handleImageBinning(void);
     void handleImageOffset(void);
     void handleImageSize(void);

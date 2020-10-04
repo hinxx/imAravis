@@ -190,7 +190,6 @@ Image::Image() {
     };
 
     unsigned int vbo2, vbo;
-//    unsigned int EBO;
     glGenBuffers(1, &ebo);
     glGenVertexArrays(1, &vao);
     glGenBuffers(1, &vbo);
@@ -249,7 +248,7 @@ Image::Image() {
 
     GLuint glError = glGetError();
     if (glError != GL_NO_ERROR) {
-        fprintf(stderr, "glGetError() returned 0x%04X\n", glError);
+        E("glGetError() returned 0x%04X\n", glError);
     }
     assert(glError == 0);
 
@@ -290,7 +289,7 @@ Image::Image() {
 
     glError = glGetError();
     if (glError != GL_NO_ERROR) {
-        fprintf(stderr, "glGetError() returned 0x%04X\n", glError);
+        E("glGetError() returned 0x%04X\n", glError);
     }
     assert(glError == 0);
 }
@@ -324,7 +323,7 @@ void Image::updateImage(const unsigned int _width, const unsigned int _height, c
     glTexImage2D(GL_TEXTURE_2D, 0, GL_R8, _width, _height, 0, GL_RED, GL_UNSIGNED_BYTE, _data);
     glError = glGetError();
     if (glError != GL_NO_ERROR) {
-       fprintf(stderr, "ERROR: glGetError() returned 0x%04X\n", glError);
+       E("ERROR: glGetError() returned 0x%04X\n", glError);
     }
     assert(glError == 0);
 

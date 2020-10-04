@@ -223,112 +223,9 @@ int main(int, char**)
         }
 
         {
-            ImGui::Begin("Image Window");
-
-            Camera *camera = viewer->camera;
-
-            if (camera != NULL) {
-                if (camera->imageUpdate) {
-                    viewer->image->updateImage(camera->imageWidth, camera->imageHeight, camera->imageData);
-                    camera->imageUpdate = false;
-                }
-
-//                if (image_texture != 0) {
-//                    ImGui::Image((void*)(intptr_t)image_texture, ImVec2(camera->imageWidth, camera->imageHeight));
-//                }
-                viewer->image->render();
-            }
-
-            ImGui::End();
+            viewer->showCameraImage();
         }
 #if 0
-        {
-            ImGui::Begin("Image Window");
-
-            ImGui::Text("Device info   : %s %s %s", cam->vendor, cam->model, cam->device);
-            ImGui::Text("Image size    : %d x %d px, %d bpp", cam->imageWidth, cam->imageHeight, 24);
-            ImGui::Text("Image payload : %zu bytes", cam->imageSize);
-
-            if (ImGui::Button("Start")) {
-                arv_camera_start_acquisition(cam->camera, NULL);
-                cam->acquiring = true;
-            }
-            ImGui::SameLine();
-            if (ImGui::Button("Stop")) {
-                arv_camera_stop_acquisition(cam->camera, NULL);
-                cam->acquiring = false;
-            }
-
-            if (cam->imageUpdated) {
-
-                // render to FBO
-                // bind to framebuffer and draw scene as we normally would to color texture
-                glBindFramebuffer(GL_FRAMEBUFFER, framebuffer);
-
-                // make sure we clear the framebuffer's content
-                glClearColor(clear_color.x, clear_color.y, clear_color.z, clear_color.w);
-                glClear(GL_COLOR_BUFFER_BIT);
-
-                glUseProgram(shaderHandle);
-
-                // we expect a R8 type of pixel data wo/ alpha
-                // GL_RED means single channels
-                // GL_R8 is for 8 bit indexed images
-                // XXX: make this work for 16 bit images as well
-                // XXX: To change texels in an already existing 2d texture, use glTexSubImage2D
-                //      https://www.khronos.org/opengl/wiki/Common_Mistakes#Updating_a_texture
-                glTexImage2D(GL_TEXTURE_2D, 0, GL_R8, cam->imageWidth, cam->imageHeight, 0, GL_RED, GL_UNSIGNED_BYTE, cam->imageData);
-                glError = glGetError();
-                if (glError != GL_NO_ERROR) {
-                    fprintf(stderr, "glGetError() returned 0x%04X\n", glError);
-                }
-                assert(glError == 0);
-
-                // set shader uniform index for indexed image: 0
-                glUniform1i(glGetUniformLocation(shaderHandle, "screenTexture"), 0);
-                glError = glGetError();
-                if (glError != GL_NO_ERROR) {
-                    fprintf(stderr, "glGetError() returned 0x%04X\n", glError);
-                }
-                assert(glError == 0);
-
-                // set shader uniform index for colomap array: 1
-                glUniform1i(glGetUniformLocation(shaderHandle, "ColorTable"), 1);
-                glError = glGetError();
-                if (glError != GL_NO_ERROR) {
-                    fprintf(stderr, "glGetError() returned 0x%04X\n", glError);
-                }
-                assert(glError == 0);
-
-                // rectangle vertex array
-                glBindVertexArray(vao);
-                glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, EBO);
-                // indexed image 2D texture
-                glActiveTexture(GL_TEXTURE0);
-                glBindTexture(GL_TEXTURE_2D, imageTexture);
-                // colormap 1D texture
-                glActiveTexture(GL_TEXTURE1);
-                glBindTexture(GL_TEXTURE_1D, colormapTexture);
-                // GL_RGBA8 = 8 bits got each color and alpha
-                // XXX: To change texels in an already existing 2d texture, use glTexSubImage2D
-                //      https://www.khronos.org/opengl/wiki/Common_Mistakes#Updating_a_texture
-                glTexImage1D(GL_TEXTURE_1D, 0, GL_RGBA8, 256, 0, GL_RGBA, GL_UNSIGNED_BYTE, cam->colorMap);
-
-                glError = glGetError();
-                if (glError != GL_NO_ERROR) {
-                    fprintf(stderr, "glGetError() returned 0x%04X\n", glError);
-                }
-                assert(glError == 0);
-
-                glDrawElements(GL_TRIANGLES, 6, GL_UNSIGNED_INT, 0);
-
-                // now bind back to default framebuffer (for ImGui)
-                glBindFramebuffer(GL_FRAMEBUFFER, 0);
-
-                glActiveTexture(GL_TEXTURE0);
-                cam->imageUpdated = false;
-            }
-
             ImGui::Text("pointer = %p", (void*)(intptr_t)imageTexture);
             static int bufferCount = 0;
             static int totalBufferCount = 0;
@@ -350,15 +247,6 @@ int main(int, char**)
             ImGui::Text("transfer  %.3g MiB/s", transferred);
             ImGui::Text("completed %d", totalBufferCount);
             ImGui::Text("error     %d", errorCount);
-
-            if (ImGui::SliderFloat("rate", &frameRate, 0.1f, 60.0f)) {
-                arv_camera_set_frame_rate(cam->camera, frameRate, NULL);
-            }
-
-            // use FBO rendered texture
-            ImGui::Image((void*)(intptr_t)textureColorbuffer, ImVec2(cam->imageWidth, cam->imageHeight));
-
-            ImGui::End();
         }
 #endif
 

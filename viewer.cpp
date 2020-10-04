@@ -15,6 +15,10 @@ Viewer::Viewer() {
     cameras.clear();
 
     image = new Image();
+    numImages = 0;
+    numAllImages = 0;
+    numErrors = 0;
+    numBytes = 0;
 }
 
 Viewer::~Viewer() {
@@ -174,10 +178,54 @@ void Viewer::showCameraInfo(void) {
     if (ImGui::Button("Stop")) {
         camera->stopVideo();
     }
+    ImGui::SameLine();
+    if (ImGui::Button("Reset stats")) {
+        numImages = 0;
+        numAllImages = 0;
+        numErrors = 0;
+        numBytes = 0;
+    }
+    ImGui::Separator();
+
+    // statistics are updated once per second
+    if (timeout <= ImGui::GetTime()) {
+        numImages = camera->numImages;
+        numAllImages += numImages;
+        numErrors += camera->numErrors;
+        numBytes = (double) camera->numBytes / 1e6;
+        // reset the stats until next timeout (1 s)
+        camera->numImages = 0;
+        camera->numErrors = 0;
+        camera->numBytes = 0;
+        timeout = ImGui::GetTime() + 1.0;
+    }
+    ImGui::Text("rate           %d images/s", numImages);
+    ImGui::Text("transferred    %.3g MiB/s", numBytes);
+    ImGui::Text("# OK images    %d", numAllImages);
+    ImGui::Text("# error images %d", numErrors);
     ImGui::Separator();
 
     ImGui::End();
 }
+
+void Viewer::showCameraImage(void) {
+    // show this window only if a camera is selected
+    if (! selectedCamera) {
+        return;
+    }
+
+    ImGui::Begin("Image Window");
+
+    if (camera->imageUpdate) {
+        image->updateImage(camera->imageWidth, camera->imageHeight, camera->imageData);
+        camera->imageUpdate = false;
+    }
+
+    image->render();
+
+    ImGui::End();
+}
+
 
 void Viewer::handleImageSize(void) {
 
