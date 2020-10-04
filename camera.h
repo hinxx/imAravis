@@ -64,9 +64,12 @@ struct Camera {
     unsigned int frameRetention;
     double packetRequestRatio;
 
-    unsigned int imagePayload;
+    void *imageData;
+    unsigned int imageSize;
     unsigned int imageWidth;
     unsigned int imageHeight;
+    unsigned int imagePayload;
+    bool imageUpdate;
 
     unsigned int numImages;
     unsigned int numBytes;

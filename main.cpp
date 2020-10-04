@@ -410,6 +410,45 @@ int main(int, char**)
         {
             viewer->showCameraInfo();
         }
+
+        {
+            ImGui::Begin("Image Window");
+
+            static GLuint image_texture = 0;
+            Camera *camera = viewer->camera;
+
+            if (camera != NULL && image_texture == 0) {
+                // Create a OpenGL texture identifier
+                glGenTextures(1, &image_texture);
+                glBindTexture(GL_TEXTURE_2D, image_texture);
+
+                // Setup filtering parameters for display
+                glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
+                glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
+
+                // Upload pixels into texture
+                glPixelStorei(GL_UNPACK_ROW_LENGTH, 0);
+            }
+
+            if (camera != NULL && camera->imageUpdate) {
+                assert(camera != NULL);
+                assert(image_texture != 0);
+
+                glTexImage2D(GL_TEXTURE_2D, 0, GL_R8, camera->imageWidth, camera->imageHeight, 0, GL_RED, GL_UNSIGNED_BYTE, camera->imageData);
+                unsigned int glError = glGetError();
+                if (glError != GL_NO_ERROR) {
+                   fprintf(stderr, "ERROR: glGetError() returned 0x%04X\n", glError);
+                }
+                assert(glError == 0);
+                camera->imageUpdate = false;
+            }
+
+            if (image_texture != 0) {
+                ImGui::Image((void*)(intptr_t)image_texture, ImVec2(camera->imageWidth, camera->imageHeight));
+            }
+
+            ImGui::End();
+        }
 #if 0
         {
             ImGui::Begin("Image Window");

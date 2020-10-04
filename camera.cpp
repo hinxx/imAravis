@@ -33,9 +33,17 @@ Camera::Camera(const unsigned int _index) {
     frameRetention = 100;
     packetRequestRatio = -1.0;
 
+    // image stats
     numImages = 0;
     numBytes = 0;
     numErrors = 0;
+    // current image
+    imageData = NULL;
+    imageUpdate = false;
+    imagePayload = 0;
+    imageSize = 0;
+    imageWidth = 0;
+    imageHeight = 0;
 }
 
 Camera::~Camera(void) {
@@ -333,6 +341,7 @@ bool Camera::infoQuery(void) {
     exposureAutoAvailable = arv_camera_is_exposure_auto_available(camera, &error);
     assert(error == NULL);
 
+    // expected image size in bytes
     imagePayload = arv_camera_get_payload(camera, &error);
     assert(error == NULL);
 
@@ -369,15 +378,22 @@ void Camera::controlLostCallback(void *_userData) {
 }
 
 void Camera::streamCallback(void *_userData, ArvStreamCallbackType _type, ArvBuffer *_buffer) {
-    D("\n");
-
     (void)_userData;
     (void)_buffer;
     if (_type == ARV_STREAM_CALLBACK_TYPE_INIT) {
-		if (! arv_make_thread_realtime (10) &&
-		    ! arv_make_thread_high_priority (-10))
-			E("Failed to make stream thread high priority");
-	}
+        D("ARV_STREAM_CALLBACK_TYPE_INIT\n");
+		if (! arv_make_thread_realtime (10) && ! arv_make_thread_high_priority (-10)) {
+            E("Failed to make stream thread high priority");
+        }
+	} else if (_type == ARV_STREAM_CALLBACK_TYPE_EXIT) {
+        D("ARV_STREAM_CALLBACK_TYPE_EXIT\n");
+    } else if (_type == ARV_STREAM_CALLBACK_TYPE_START_BUFFER) {
+        D("ARV_STREAM_CALLBACK_TYPE_START_BUFFER\n");
+    } else if (_type == ARV_STREAM_CALLBACK_TYPE_BUFFER_DONE) {
+        D("ARV_STREAM_CALLBACK_TYPE_BUFFER_DONE\n");
+    } else {
+        assert(1 != 1);
+    }
 }
 
 void Camera::newBufferCallback(ArvStream *_stream, void *_userData) {
@@ -388,26 +404,81 @@ void Camera::newBufferCallback(ArvStream *_stream, void *_userData) {
     assert(_userData != NULL);
     Camera *camera = (Camera *)_userData;
 
-	buffer = arv_stream_pop_buffer(_stream);
+    // do not block when trying to get an image
+    buffer = arv_stream_try_pop_buffer(_stream);
+    assert(buffer != NULL);
     if (buffer == NULL) {
+        E("arv_stream_try_pop_buffer() returned no buffer: %d\n", arv_buffer_get_status(buffer));
         return;
     }
 
 	arv_stream_get_n_buffers(_stream, &n_input_buffers, &n_output_buffers);
 	D("have %d in, %d out buffers \n", n_input_buffers, n_output_buffers);
 
-    if (arv_buffer_get_status(buffer) == ARV_BUFFER_STATUS_SUCCESS) {
-		size_t size;
-		arv_buffer_get_data(buffer, &size);
-        camera->numImages++;
-        camera->numBytes += size;
-        D("push handled buffer\n");
-        arv_stream_push_buffer(_stream, buffer);
-    } else {
+    if (arv_buffer_get_status(buffer) != ARV_BUFFER_STATUS_SUCCESS) {
         camera->numErrors++;
-        E("push discarded buffer\n");
-		arv_stream_push_buffer(_stream, buffer);
+        E("arv_buffer_get_status() failed: %d\n", arv_buffer_get_status(buffer));
+        return;
     }
+
+    // buffer contains our image
+
+    int imageWidth = arv_buffer_get_image_width(buffer);
+    assert(imageWidth > 0);
+    int imageHeight = arv_buffer_get_image_height(buffer);
+    assert(imageHeight > 0);
+    size_t size = 0;
+    const void *raw = arv_buffer_get_data(buffer, &size);
+    assert(raw != NULL);
+    int pixelFormat = arv_buffer_get_image_pixel_format(buffer);
+    D("raw image %lu bytes, pixel format %08X\n", size, pixelFormat);
+
+    int imageDepth = 0;
+    switch (pixelFormat) {
+    case ARV_PIXEL_FORMAT_MONO_16:
+        // D("pixel format ARV_PIXEL_FORMAT_MONO_16\n");
+        imageDepth = 2;
+        break;
+    case ARV_PIXEL_FORMAT_MONO_8:
+        // D("pixel format ARV_PIXEL_FORMAT_MONO_8\n");
+        imageDepth = 1;
+        break;
+    default:
+        E("unhandled pixel format 0x%X\n", pixelFormat);
+        break;
+    }
+    assert(imageDepth != 0);
+    // D("RGB image %lu bytes, pixel format RGB\n", size);
+
+    if (camera->imageData == NULL) {
+        // allocate room for a RGB image, aravis provided payload data may be
+        // in other pixel formats (8 bit, 10 bit, 12 bit, 16 bit,..)
+        camera->imageData = malloc(size);
+        D("allocated %zu bytes for image data\n", size);
+    } else if (camera->imageData != NULL) {
+        // do we need to reallocate the RGB buffer?
+        assert(camera->imageSize > 0);
+        if (camera->imageSize < size) {
+            camera->imageData = realloc(camera->imageData, size);
+            D("re-allocated %zu bytes for image data\n", size);
+        }
+    }
+    camera->imageSize = size;
+    assert(camera->imageSize > 0);
+    assert(camera->imageData != NULL);
+
+    memcpy(camera->imageData, raw, size);
+    camera->imageWidth = imageWidth;
+    camera->imageHeight = imageHeight;
+    camera->numImages++;
+    camera->numBytes += size;
+
+    // main loop will pick the new frame data
+    camera->imageUpdate = true;
+    D("new image available!\n");
+
+    // always return the buffer to the stream
+    arv_stream_push_buffer(_stream, buffer);
 }
 
 
