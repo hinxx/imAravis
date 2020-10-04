@@ -70,6 +70,91 @@ static bool CheckProgram(GLuint handle, const char* desc)
     return (GLboolean)status == GL_TRUE;
 }
 
+// from https://github.com/kbinani/colormap-shaders
+// Matlab JET colormap
+struct vec4
+{
+    vec4(float a0, float a1, float a2, float a3)
+        : x(a0)
+        , y(a1)
+        , z(a2)
+        , w(a3)
+    {
+    }
+
+    union {
+        double r;
+        double x;
+    };
+    union {
+        double g;
+        double y;
+    };
+    union {
+        double b;
+        double z;
+    };
+    union {
+        double a;
+        double w;
+    };
+};
+
+float colormap_red(float x) {
+    if (x < 0.7) {
+        return 4.0 * x - 1.5;
+    } else {
+        return -4.0 * x + 4.5;
+    }
+}
+
+float colormap_green(float x) {
+    if (x < 0.5) {
+        return 4.0 * x - 0.5;
+    } else {
+        return -4.0 * x + 3.5;
+    }
+}
+
+float colormap_blue(float x) {
+    if (x < 0.3) {
+       return 4.0 * x + 0.5;
+    } else {
+       return -4.0 * x + 2.5;
+    }
+}
+
+float clamp(float v, float min, float max) {
+    if (v < min) {
+        return min;
+    } else if (max < v) {
+        return max;
+    } else {
+        return v;
+    }
+}
+
+vec4 colormap(float x) {
+    float r = clamp(colormap_red(x), 0.0, 1.0);
+    float g = clamp(colormap_green(x), 0.0, 1.0);
+    float b = clamp(colormap_blue(x), 0.0, 1.0);
+    return vec4(r, g, b, 1.0);
+}
+
+void Image::initColorMap(void) {
+    float v;
+    for (int i = 0; i < 256; i++) {
+        v = (float)i / 255.0;
+        // make JET colomap
+        colorMap[i][0] = (unsigned char)(clamp(colormap_red(v), 0.0, 1.0) * 255.0);
+        colorMap[i][1] = (unsigned char)(clamp(colormap_green(v), 0.0, 1.0) * 255.0);
+        colorMap[i][2] = (unsigned char)(clamp(colormap_blue(v), 0.0, 1.0) * 255.0);
+        colorMap[i][3] = 255;
+        // fprintf(stderr, "RGBA %3d %3d %3d %3d\n", colorMap[i][0], colorMap[i][1], colorMap[i][2], colorMap[i][3]);
+    }
+}
+// Matlab JET colormap
+
 Image::Image() {
 
     rawTexture = 0;
@@ -104,15 +189,15 @@ Image::Image() {
         0.0f,   1.0f
     };
 
-    unsigned int vbo2, vbo, vao;
-    unsigned int EBO;
-    glGenBuffers(1, &EBO);
+    unsigned int vbo2, vbo;
+//    unsigned int EBO;
+    glGenBuffers(1, &ebo);
     glGenVertexArrays(1, &vao);
     glGenBuffers(1, &vbo);
     glBindVertexArray(vao);
     glBindBuffer(GL_ARRAY_BUFFER, vbo);
     glBufferData(GL_ARRAY_BUFFER, sizeof(vertices), vertices, GL_STATIC_DRAW);
-    glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, EBO);
+    glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, ebo);
     glBufferData(GL_ELEMENT_ARRAY_BUFFER, sizeof(indices), indices, GL_STATIC_DRAW);
     glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, 3 * sizeof(float), (void*)0);
     glEnableVertexAttribArray(0);
@@ -170,6 +255,8 @@ Image::Image() {
 
     glBindFramebuffer(GL_FRAMEBUFFER, 0);
 
+    initColorMap();
+
     // Create a OpenGL texture identifier for color map
     glGenTextures(1, &paletteTexture);
     glBindTexture(GL_TEXTURE_1D, paletteTexture);
@@ -179,6 +266,16 @@ Image::Image() {
     glTexParameteri(GL_TEXTURE_1D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
     // Upload pixels into texture
     glPixelStorei(GL_UNPACK_ROW_LENGTH, 0);
+
+    // GL_RGBA8 = 8 bits got each color and alpha
+    // XXX: To change texels in an already existing 2d texture, use glTexSubImage2D
+    //      https://www.khronos.org/opengl/wiki/Common_Mistakes#Updating_a_texture
+    glTexImage1D(GL_TEXTURE_1D, 0, GL_RGBA8, 256, 0, GL_RGBA, GL_UNSIGNED_BYTE, colorMap);
+    glError = glGetError();
+    if (glError != GL_NO_ERROR) {
+        E("glGetError() returned 0x%04X\n", glError);
+    }
+    assert(glError == 0);
 
     // Create a OpenGL texture identifier for raw image
     glGenTextures(1, &rawTexture);
@@ -205,8 +302,27 @@ Image::~Image() {
 void Image::updateImage(const unsigned int _width, const unsigned int _height, const void *_data) {
     assert(rawTexture != 0);
 
+    GLuint glError;
+
+    // render to FBO
+    // bind to framebuffer and draw scene as we normally would to color texture
+    glBindFramebuffer(GL_FRAMEBUFFER, fbo);
+
+    // make sure we clear the framebuffer's content
+    ImVec4 clear_color = ImVec4(0.45f, 0.55f, 0.60f, 1.00f);
+    glClearColor(clear_color.x, clear_color.y, clear_color.z, clear_color.w);
+    glClear(GL_COLOR_BUFFER_BIT);
+
+    glUseProgram(shaderHandle);
+
+    // we expect a R8 type of pixel data wo/ alpha
+    // GL_RED means single channels
+    // GL_R8 is for 8 bit indexed images
+    // XXX: make this work for 16 bit images as well
+    // XXX: To change texels in an already existing 2d texture, use glTexSubImage2D
+    //      https://www.khronos.org/opengl/wiki/Common_Mistakes#Updating_a_texture
     glTexImage2D(GL_TEXTURE_2D, 0, GL_R8, _width, _height, 0, GL_RED, GL_UNSIGNED_BYTE, _data);
-    unsigned int glError = glGetError();
+    glError = glGetError();
     if (glError != GL_NO_ERROR) {
        fprintf(stderr, "ERROR: glGetError() returned 0x%04X\n", glError);
     }
@@ -214,10 +330,55 @@ void Image::updateImage(const unsigned int _width, const unsigned int _height, c
 
     imageWidth = _width;
     imageHeight = _height;
+
+    // set shader uniform index for indexed image: 0
+    glUniform1i(glGetUniformLocation(shaderHandle, "screenTexture"), 0);
+    glError = glGetError();
+    if (glError != GL_NO_ERROR) {
+        E("glGetError() returned 0x%04X\n", glError);
+    }
+    assert(glError == 0);
+
+    // set shader uniform index for colomap array: 1
+    glUniform1i(glGetUniformLocation(shaderHandle, "ColorTable"), 1);
+    glError = glGetError();
+    if (glError != GL_NO_ERROR) {
+        E("glGetError() returned 0x%04X\n", glError);
+    }
+    assert(glError == 0);
+
+    // rectangle vertex array
+    glBindVertexArray(vao);
+    glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, ebo);
+    // indexed image 2D texture
+    glActiveTexture(GL_TEXTURE0);
+    glBindTexture(GL_TEXTURE_2D, rawTexture);
+    // colormap 1D texture
+    glActiveTexture(GL_TEXTURE1);
+    glBindTexture(GL_TEXTURE_1D, paletteTexture);
+    // GL_RGBA8 = 8 bits got each color and alpha
+    // XXX: To change texels in an already existing 2d texture, use glTexSubImage2D
+    //      https://www.khronos.org/opengl/wiki/Common_Mistakes#Updating_a_texture
+    //glTexImage1D(GL_TEXTURE_1D, 0, GL_RGBA8, 256, 0, GL_RGBA, GL_UNSIGNED_BYTE, colorMap);
+
+    glError = glGetError();
+    if (glError != GL_NO_ERROR) {
+        E("glGetError() returned 0x%04X\n", glError);
+    }
+    assert(glError == 0);
+
+    // render the image to fbo
+    glDrawElements(GL_TRIANGLES, 6, GL_UNSIGNED_INT, 0);
+
+    // now bind back to default framebuffer (for ImGui)
+    glBindFramebuffer(GL_FRAMEBUFFER, 0);
+
+    glActiveTexture(GL_TEXTURE0);
 }
 
 void Image::render(void) {
     assert(rawTexture != 0);
 
-    ImGui::Image((void*)(intptr_t)rawTexture, ImVec2(imageWidth, imageHeight));
+//    ImGui::Image((void*)(intptr_t)rawTexture, ImVec2(imageWidth, imageHeight));
+    ImGui::Image((void*)(intptr_t)colorTexture, ImVec2(imageWidth, imageHeight));
 }
