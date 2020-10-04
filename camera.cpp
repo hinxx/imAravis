@@ -418,6 +418,8 @@ void Camera::newBufferCallback(ArvStream *_stream, void *_userData) {
     if (arv_buffer_get_status(buffer) != ARV_BUFFER_STATUS_SUCCESS) {
         camera->numErrors++;
         E("arv_buffer_get_status() failed: %d\n", arv_buffer_get_status(buffer));
+        // always return the buffer to the stream
+        arv_stream_push_buffer(_stream, buffer);
         return;
     }
 

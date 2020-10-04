@@ -5,6 +5,10 @@
 
 struct Image {
     GLuint rawTexture;
+    GLuint paletteTexture;
+    GLuint colorTexture;
+    GLuint fbo;
+
     unsigned int imageWidth;
     unsigned int imageHeight;
 

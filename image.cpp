@@ -74,19 +74,6 @@ Image::Image() {
 
     rawTexture = 0;
 
-    // Create a OpenGL texture identifier
-    glGenTextures(1, &rawTexture);
-    glBindTexture(GL_TEXTURE_2D, rawTexture);
-
-    // Setup filtering parameters for display
-    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
-    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
-
-    // Upload pixels into texture
-    glPixelStorei(GL_UNPACK_ROW_LENGTH, 0);
-
-
-#if 0
     //RECTANGLE CREATION//
 
     // half size
@@ -161,47 +148,54 @@ Image::Image() {
 
     // framebuffer configuration
     // -------------------------
-    unsigned int framebuffer;
-    glGenFramebuffers(1, &framebuffer);
-    glBindFramebuffer(GL_FRAMEBUFFER, framebuffer);
+    glGenFramebuffers(1, &fbo);
+    glBindFramebuffer(GL_FRAMEBUFFER, fbo);
     // create a color attachment texture
-    unsigned int textureColorbuffer;
-    glGenTextures(1, &textureColorbuffer);
-    glBindTexture(GL_TEXTURE_2D, textureColorbuffer);
+    glGenTextures(1, &colorTexture);
+    glBindTexture(GL_TEXTURE_2D, colorTexture);
     glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA, 1280, 720, 0, GL_RGBA, GL_UNSIGNED_BYTE, NULL);
     glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
     glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
-    glFramebufferTexture2D(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT0, GL_TEXTURE_2D, textureColorbuffer, 0);
+    glFramebufferTexture2D(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT0, GL_TEXTURE_2D, colorTexture, 0);
     // now that we actually created the framebuffer and added all attachments we want to check if it is actually complete now
     if (glCheckFramebufferStatus(GL_FRAMEBUFFER) != GL_FRAMEBUFFER_COMPLETE) {
-        fprintf(stderr, "ERROR::FRAMEBUFFER:: Framebuffer is not complete!");
+        E("Framebuffer is not complete!");
     }
+
+    GLuint glError = glGetError();
+    if (glError != GL_NO_ERROR) {
+        fprintf(stderr, "glGetError() returned 0x%04X\n", glError);
+    }
+    assert(glError == 0);
+
     glBindFramebuffer(GL_FRAMEBUFFER, 0);
 
-    GLuint imageTexture = 0;
-    GLuint colormapTexture = 0;
-
-    // Create a OpenGL texture identifier
-    glGenTextures(1, &imageTexture);
-    glBindTexture(GL_TEXTURE_2D, imageTexture);
-
-    // Setup filtering parameters for display
-    // glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
-    // glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
-    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
-    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
-    // Upload pixels into texture
-    glPixelStorei(GL_UNPACK_ROW_LENGTH, 0);
-
-    glGenTextures(1, &colormapTexture);
-    glBindTexture(GL_TEXTURE_1D, colormapTexture);
+    // Create a OpenGL texture identifier for color map
+    glGenTextures(1, &paletteTexture);
+    glBindTexture(GL_TEXTURE_1D, paletteTexture);
     // glTexParameteri(GL_TEXTURE_1D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
     // glTexParameteri(GL_TEXTURE_1D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
     glTexParameteri(GL_TEXTURE_1D, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
     glTexParameteri(GL_TEXTURE_1D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
     // Upload pixels into texture
     glPixelStorei(GL_UNPACK_ROW_LENGTH, 0);
-#endif
+
+    // Create a OpenGL texture identifier for raw image
+    glGenTextures(1, &rawTexture);
+    glBindTexture(GL_TEXTURE_2D, rawTexture);
+    // Setup filtering parameters for display
+    //glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
+    //glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
+    // Upload pixels into texture
+    glPixelStorei(GL_UNPACK_ROW_LENGTH, 0);
+
+    glError = glGetError();
+    if (glError != GL_NO_ERROR) {
+        fprintf(stderr, "glGetError() returned 0x%04X\n", glError);
+    }
+    assert(glError == 0);
 }
 
 Image::~Image() {
