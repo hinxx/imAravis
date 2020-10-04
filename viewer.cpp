@@ -13,9 +13,13 @@ Viewer::Viewer() {
     camera = NULL;
     selectedCamera = NULL;
     cameras.clear();
+
+    image = new Image();
 }
 
 Viewer::~Viewer() {
+    delete image;
+
     if (camera) {
         camera->stop();
     }

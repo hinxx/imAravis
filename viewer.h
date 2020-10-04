@@ -2,6 +2,7 @@
 #define VIEWER_H
 
 #include "camera.h"
+#include "image.h"
 
 #include <vector>
 
@@ -9,6 +10,7 @@ struct Viewer {
     std::vector<Camera *> cameras;
     Camera *camera;
     char *selectedCamera;
+    Image *image;
 
     Viewer(void);
     ~Viewer(void);

@@ -84,6 +84,8 @@ camera.h
 debug.h
 imAravis.cflags
 imAravis.cxxflags
+image.cpp
+image.h
 imaravis.cpp
 imaravis.h
 imgui/LICENSE.txt
