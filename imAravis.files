@@ -82,6 +82,8 @@ aravis/share/aravis-0.8/arv-fake-camera.xml
 camera.cpp
 camera.h
 debug.h
+genicam.cpp
+genicam.h
 imAravis.cflags
 imAravis.cxxflags
 image.cpp

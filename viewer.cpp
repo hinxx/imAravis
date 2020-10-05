@@ -24,9 +24,12 @@ Viewer::Viewer() {
     scaleHeight = 1.0f;
 
     paletteCurrentIndex = -1;
+
+    genicam = new Genicam();
 }
 
 Viewer::~Viewer() {
+    delete genicam;
     delete image;
 
     if (camera) {
@@ -83,6 +86,10 @@ void Viewer::startCamera(void) {
         return;
     }
     camera->start();
+
+    // list camera features
+    genicam->initialize(camera->camera);
+    genicam->listFeatures();
 }
 
 void Viewer::stopCamera(void) {

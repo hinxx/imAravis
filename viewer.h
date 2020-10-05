@@ -4,6 +4,7 @@
 #include "camera.h"
 #include "image.h"
 #include "palette.h"
+#include "genicam.h"
 
 #include <vector>
 
@@ -21,6 +22,7 @@ struct Viewer {
     float scaleHeight;
     PaletteList paletteList;
     int paletteCurrentIndex;
+    Genicam *genicam;
 
     Viewer(void);
     ~Viewer(void);
