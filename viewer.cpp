@@ -19,6 +19,9 @@ Viewer::Viewer() {
     numAllImages = 0;
     numErrors = 0;
     numBytes = 0;
+
+    scaleWidth = 1.0f;
+    scaleHeight = 1.0f;
 }
 
 Viewer::~Viewer() {
@@ -184,6 +187,13 @@ void Viewer::showCameraInfo(void) {
         numAllImages = 0;
         numErrors = 0;
         numBytes = 0;
+    }
+    ImGui::Separator();
+    if (ImGui::SliderFloat("Width scale", &scaleWidth, 0.0f, 1.0f)) {
+        image->updateScale(scaleWidth, scaleHeight);
+    }
+    if (ImGui::SliderFloat("Height scale", &scaleHeight, 0.0f, 1.0f)) {
+        image->updateScale(scaleWidth, scaleHeight);
     }
     ImGui::Separator();
 

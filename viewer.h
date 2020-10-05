@@ -16,6 +16,8 @@ struct Viewer {
     int numAllImages;
     int numErrors;
     double numBytes;
+    float scaleWidth;
+    float scaleHeight;
 
     Viewer(void);
     ~Viewer(void);

@@ -157,7 +157,9 @@ void Image::initColorMap(void) {
 
 Image::Image() {
 
-    rawTexture = 0;
+    // default size
+    scaleWidth = 1.0f;
+    scaleHeight = 1.0f;
 
     //RECTANGLE CREATION//
 
@@ -375,9 +377,16 @@ void Image::updateImage(const unsigned int _width, const unsigned int _height, c
     glActiveTexture(GL_TEXTURE0);
 }
 
+void Image::updateScale(const double _scaleWidth, const double _scaleHeight) {
+    assert(_scaleWidth > 0.0 && _scaleWidth <= 1.0);
+    assert(_scaleHeight > 0.0 && _scaleHeight <= 1.0);
+    scaleWidth = _scaleWidth;
+    scaleHeight = _scaleHeight;
+}
+
 void Image::render(void) {
     assert(rawTexture != 0);
 
-//    ImGui::Image((void*)(intptr_t)rawTexture, ImVec2(imageWidth, imageHeight));
-    ImGui::Image((void*)(intptr_t)colorTexture, ImVec2(imageWidth, imageHeight));
+    //ImGui::Image((void*)(intptr_t)rawTexture, ImVec2(imageWidth, imageHeight));
+    ImGui::Image((void*)(intptr_t)colorTexture, ImVec2(imageWidth * scaleWidth, imageHeight * scaleHeight), ImVec2(0.0f, 0.0f), ImVec2(1.0f, 1.0f));
 }
