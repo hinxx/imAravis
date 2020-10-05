@@ -107,5 +107,7 @@ imgui/libs/gl3w/GL/gl3w.c
 imgui/libs/gl3w/GL/gl3w.h
 imgui/libs/gl3w/GL/glcorearb.h
 main.cpp
+palette.cpp
+palette.h
 viewer.cpp
 viewer.h

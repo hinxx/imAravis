@@ -3,6 +3,7 @@
 
 #include "camera.h"
 #include "image.h"
+#include "palette.h"
 
 #include <vector>
 
@@ -18,6 +19,8 @@ struct Viewer {
     double numBytes;
     float scaleWidth;
     float scaleHeight;
+    PaletteList paletteList;
+    int paletteCurrentIndex;
 
     Viewer(void);
     ~Viewer(void);

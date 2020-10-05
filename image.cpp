@@ -271,7 +271,8 @@ Image::Image() {
     // GL_RGBA8 = 8 bits got each color and alpha
     // XXX: To change texels in an already existing 2d texture, use glTexSubImage2D
     //      https://www.khronos.org/opengl/wiki/Common_Mistakes#Updating_a_texture
-    glTexImage1D(GL_TEXTURE_1D, 0, GL_RGBA8, 256, 0, GL_RGBA, GL_UNSIGNED_BYTE, colorMap);
+//    glTexImage1D(GL_TEXTURE_1D, 0, GL_RGBA8, 256, 0, GL_RGBA, GL_UNSIGNED_BYTE, colorMap);
+    glTexImage1D(GL_TEXTURE_1D, 0, GL_RGBA8, 256, 0, GL_RGBA, GL_UNSIGNED_BYTE, NULL);
     glError = glGetError();
     if (glError != GL_NO_ERROR) {
         E("glGetError() returned 0x%04X\n", glError);
@@ -405,6 +406,29 @@ void Image::updateScale(const double _scaleWidth, const double _scaleHeight) {
     assert(_scaleHeight > 0.0 && _scaleHeight <= 1.0);
     scaleWidth = _scaleWidth;
     scaleHeight = _scaleHeight;
+}
+
+void Image::updatePalette(const unsigned int _width, const void *_data) {
+    assert(paletteTexture != 0);
+
+    glActiveTexture(GL_TEXTURE1);
+    glBindTexture(GL_TEXTURE_1D, paletteTexture);
+
+    //glTexImage1D(GL_TEXTURE_1D, 0, GL_RGBA8, 256, 0, GL_RGBA, GL_UNSIGNED_BYTE, colorMap);
+    glTexSubImage1D(GL_TEXTURE_1D,
+        0,
+        0,
+        _width,
+        GL_RGBA,
+        GL_UNSIGNED_BYTE,
+        _data);
+    GLuint glError = glGetError();
+    if (glError != GL_NO_ERROR) {
+       E("ERROR: glGetError() returned 0x%04X\n", glError);
+    }
+    assert(glError == 0);
+
+    glActiveTexture(GL_TEXTURE0);
 }
 
 void Image::render(void) {

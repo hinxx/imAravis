@@ -16,6 +16,7 @@
 
 EXE = imAravis
 SOURCES = main.cpp
+SOURCES += palette.cpp
 SOURCES += image.cpp
 SOURCES += camera.cpp
 SOURCES += viewer.cpp

@@ -23,6 +23,7 @@ struct Image {
     void initColorMap(void);
     void updateImage(const unsigned int _width, const unsigned int _height, const void *_data);
     void updateScale(const double _scaleWidth, const double _scaleHeight);
+    void updatePalette(const unsigned int _width, const void *_data);
     void render(void);
 };
 

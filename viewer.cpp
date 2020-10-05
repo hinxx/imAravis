@@ -22,6 +22,8 @@ Viewer::Viewer() {
 
     scaleWidth = 1.0f;
     scaleHeight = 1.0f;
+
+    paletteCurrentIndex = -1;
 }
 
 Viewer::~Viewer() {
@@ -188,6 +190,35 @@ void Viewer::showCameraInfo(void) {
         numErrors = 0;
         numBytes = 0;
     }
+//    ImGui::SameLine();
+//    if (ImGui::Button("Apply colormap")) {
+//        image->updatePalette(256, image->colorMap);
+//    }
+    ImGui::AlignTextToFramePadding();
+    ImGui::SetNextItemWidth(200);
+    const char * paletteCurrent = NULL;
+    if (paletteCurrentIndex != -1) {
+        paletteCurrent = paletteList.getName(paletteCurrentIndex);
+    }
+    if (ImGui::BeginCombo("Palette", paletteCurrent)) {
+        for (unsigned int n = 0; n < paletteList.getCount(); n++) {
+            const bool isSelected = (paletteCurrentIndex == (int)n);
+            if (ImGui::Selectable(paletteList.getName(n), isSelected)) {
+                paletteCurrentIndex = n;
+                paletteCurrent = paletteList.getName(paletteCurrentIndex);
+                D("palette changed to %d = %s\n", paletteCurrentIndex, paletteCurrent);
+                unsigned char *map = paletteList.generate(paletteCurrent, 256);
+                image->updatePalette(256, map);
+            }
+            // set the initial focus when opening the combo
+            if (isSelected) {
+                ImGui::SetItemDefaultFocus();
+            }
+        }
+        ImGui::EndCombo();
+
+    }
+
     ImGui::Separator();
     if (ImGui::SliderFloat("Width scale", &scaleWidth, 0.0f, 1.0f)) {
         image->updateScale(scaleWidth, scaleHeight);
@@ -317,9 +348,10 @@ void Viewer::handleImagePixelFormat(void) {
     ImGui::AlignTextToFramePadding();
     ImGui::SetNextItemWidth(200);
     int value = camera->pixelFormatCurrent;
+    // XXX: Use ImGui::BeginCombo()
     if (ImGui::Combo("Pixel format", &value, camera->pixelFormatStrings, camera->numPixelFormats)) {
-        D("pixel format changed to %s (0x%08X)\n", camera->pixelFormatString, camera->pixelFormat);
         camera->setPixelFormat(value);
+        D("pixel format changed to %s (0x%08X)\n", camera->pixelFormatString, camera->pixelFormat);
     }
 }
 
