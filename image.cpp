@@ -294,6 +294,20 @@ Image::Image() {
         E("glGetError() returned 0x%04X\n", glError);
     }
     assert(glError == 0);
+
+    // we expect a R8 type of pixel data wo/ alpha
+    // GL_RED means single channels
+    // GL_R8 is for 8 bit indexed images
+    // XXX: make this work for 16 bit images as well
+    // XXX: To change texels in an already existing 2d texture, use glTexSubImage2D
+    //      https://www.khronos.org/opengl/wiki/Common_Mistakes#Updating_a_texture
+//    glTexImage2D(GL_TEXTURE_2D, 0, GL_R8, 4096, 4096, 0, GL_RED, GL_UNSIGNED_BYTE, NULL);
+    glTexImage2D(GL_TEXTURE_2D, 0, GL_R8, 512, 512, 0, GL_RED, GL_UNSIGNED_BYTE, NULL);
+    glError = glGetError();
+    if (glError != GL_NO_ERROR) {
+       E("ERROR: glGetError() returned 0x%04X\n", glError);
+    }
+    assert(glError == 0);
 }
 
 Image::~Image() {
@@ -305,6 +319,31 @@ void Image::updateImage(const unsigned int _width, const unsigned int _height, c
 
     GLuint glError;
 
+    // we expect a R8 type of pixel data wo/ alpha
+    // GL_RED means single channels
+    // GL_R8 is for 8 bit indexed images
+    // XXX: make this work for 16 bit images as well
+    // XXX: To change texels in an already existing 2d texture, use glTexSubImage2D
+    //      https://www.khronos.org/opengl/wiki/Common_Mistakes#Updating_a_texture
+    //glTexImage2D(GL_TEXTURE_2D, 0, GL_R8, _width, _height, 0, GL_RED, GL_UNSIGNED_BYTE, _data);
+    glTexSubImage2D(GL_TEXTURE_2D,
+        0,
+        0,
+        0,
+        _width,
+        _height,
+        GL_RED,
+        GL_UNSIGNED_BYTE,
+        _data);
+    glError = glGetError();
+    if (glError != GL_NO_ERROR) {
+       E("ERROR: glGetError() returned 0x%04X\n", glError);
+    }
+    assert(glError == 0);
+
+    imageWidth = _width;
+    imageHeight = _height;
+
     // render to FBO
     // bind to framebuffer and draw scene as we normally would to color texture
     glBindFramebuffer(GL_FRAMEBUFFER, fbo);
@@ -315,22 +354,6 @@ void Image::updateImage(const unsigned int _width, const unsigned int _height, c
     glClear(GL_COLOR_BUFFER_BIT);
 
     glUseProgram(shaderHandle);
-
-    // we expect a R8 type of pixel data wo/ alpha
-    // GL_RED means single channels
-    // GL_R8 is for 8 bit indexed images
-    // XXX: make this work for 16 bit images as well
-    // XXX: To change texels in an already existing 2d texture, use glTexSubImage2D
-    //      https://www.khronos.org/opengl/wiki/Common_Mistakes#Updating_a_texture
-    glTexImage2D(GL_TEXTURE_2D, 0, GL_R8, _width, _height, 0, GL_RED, GL_UNSIGNED_BYTE, _data);
-    glError = glGetError();
-    if (glError != GL_NO_ERROR) {
-       E("ERROR: glGetError() returned 0x%04X\n", glError);
-    }
-    assert(glError == 0);
-
-    imageWidth = _width;
-    imageHeight = _height;
 
     // set shader uniform index for indexed image: 0
     glUniform1i(glGetUniformLocation(shaderHandle, "screenTexture"), 0);
