@@ -35,6 +35,7 @@ struct Viewer {
     void showCameraList(void);
     void showCameraInfo(void);
     void showCameraImage(void);
+    void showCameraFeatures(void);
 
     void handleImageBinning(void);
     void handleImageOffset(void);

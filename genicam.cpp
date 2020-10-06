@@ -1,16 +1,20 @@
 #include "genicam.h"
 #include "debug.h"
 
+#include "imgui.h"
+
 #include <assert.h>
 
 Genicam::Genicam() {
     device = NULL;
     genicam = NULL;
+//    update = false;
 }
 
 Genicam::~Genicam() {
     device = NULL;
     genicam = NULL;
+//    update = false;
 }
 
 void Genicam::initialize(ArvCamera *_camera) {
@@ -19,12 +23,23 @@ void Genicam::initialize(ArvCamera *_camera) {
     assert(device != NULL);
     genicam = arv_device_get_genicam(device);
     assert(genicam != NULL);
+//    update = true;
 }
 
+void Genicam::destroy(void) {
+    device = NULL;
+    genicam = NULL;
+//    update = false;
+}
 
 void Genicam::listFeatures(void) {
-//    genicam, "Root", ARV_TOOL_LIST_MODE_FEATURES, 0
-    showFeature("Root", 0);
+//    if (update) {
+//        gint64 start = g_get_monotonic_time();
+//        showFeature("Root", 0);
+        traverse("Root");
+//        D("Executed in %g s\n", (g_get_monotonic_time() - start) / 1000000.0);
+//        update = false;
+//    }
 }
 
 void Genicam::showFeature(const char *feature, int level) {
@@ -125,4 +140,131 @@ void Genicam::showFeature(const char *feature, int level) {
 			}
 		}
 	}
+}
+
+void Genicam::traverse(const char *_name) {
+	ArvGcNode *node;
+
+    node = arv_gc_get_node(genicam, _name);
+	if (ARV_IS_GC_FEATURE_NODE(node) && arv_gc_feature_node_is_implemented(ARV_GC_FEATURE_NODE(node), NULL)) {
+		if (ARV_IS_GC_CATEGORY(node)) {
+            // skip the root node, categories are handled below
+            if (strncmp(_name, "Root", 4) != 0) {
+                handleCategory(_name);
+            }
+
+            // recurse into the category..
+            const GSList *features = arv_gc_category_get_features(ARV_GC_CATEGORY(node));
+			const GSList *iter;
+            for (iter = features; iter != NULL; iter = iter->next) {
+                traverse((const char *)(iter->data));
+            }
+//		} else {
+//            if (arv_gc_feature_node_is_available(ARV_GC_FEATURE_NODE(node), NULL)) {
+//                printf("%s: '%s'\n", arv_dom_node_get_node_name(ARV_DOM_NODE(node)), _name);
+//            }
+        }
+    }
+}
+
+void Genicam::handleCategory(const char *_name) {
+    assert(_name != NULL);
+    ArvGcNode *node = arv_gc_get_node(genicam, _name);
+    assert(node != NULL);
+
+    //printf("%s: name '%s'\n", arv_dom_node_get_node_name(ARV_DOM_NODE(node)), _name);
+
+    ImGui::AlignTextToFramePadding();
+    bool isOpen = ImGui::TreeNode(_name);
+    ImGui::NextColumn();
+    ImGui::AlignTextToFramePadding();
+    ImGui::Text("%s", "");
+    ImGui::NextColumn();
+    if (isOpen) {
+        const GSList *features;
+        const GSList *iter;
+        features = arv_gc_category_get_features(ARV_GC_CATEGORY(node));
+        // handle individual features
+        for (iter = features; iter != NULL; iter = iter->next) {
+            handleFeature((const char *)(iter->data));
+        }
+        ImGui::TreePop();
+    }
+
+}
+
+void Genicam::handleFeature(const char *_name) {
+    assert(_name != NULL);
+    ArvGcNode *node = arv_gc_get_node(genicam, _name);
+    assert(node != NULL);
+
+    assert(ARV_IS_GC_CATEGORY(node) != true);
+    if (ARV_IS_GC_CATEGORY(node)) {
+        E("skipping category node %s\n", _name);
+        return;
+    }
+
+    if (arv_gc_feature_node_is_available(ARV_GC_FEATURE_NODE(node), NULL)) {
+        //printf("%s: '%s'\n", arv_dom_node_get_node_name(ARV_DOM_NODE(node)), _name);
+        ImGui::AlignTextToFramePadding();
+        ImGuiTreeNodeFlags flags = ImGuiTreeNodeFlags_Leaf | ImGuiTreeNodeFlags_NoTreePushOnOpen | ImGuiTreeNodeFlags_Bullet;
+        ImGui::TreeNodeEx("Field", flags, "%s", _name);
+        ImGui::NextColumn();
+        ImGui::SetNextItemWidth(-1);
+
+        if (ARV_IS_GC_STRING(node) || ARV_IS_GC_ENUMERATION(node)) {
+            handleFeatureString(node);
+        } else if (ARV_IS_GC_INTEGER(node)) {
+            handleFeatureInteger(node);
+        } else if (ARV_IS_GC_FLOAT(node)) {
+            handleFeatureFloat(node);
+        } else if (ARV_IS_GC_BOOLEAN(node)) {
+            handleFeatureBoolean(node);
+        } else if (ARV_IS_GC_COMMAND(node)) {
+            handleFeatureCommand(node);
+        } else {
+            ImGui::Text("TODO TODO TODO");
+        }
+        ImGui::NextColumn();
+    }
+}
+
+void Genicam::handleFeatureInteger(ArvGcNode *_node) {
+    const char *unit = arv_gc_integer_get_unit(ARV_GC_INTEGER(_node));
+    GError *error = NULL;
+    if (ARV_IS_GC_ENUMERATION(_node)) {
+        const char *value = arv_gc_string_get_value(ARV_GC_STRING(_node), &error);
+        assert(error == NULL);
+        ImGui::Text("%s", value);
+    } else {
+        gint64 value = arv_gc_integer_get_value(ARV_GC_INTEGER(_node), &error);
+        assert(error == NULL);
+        ImGui::Text("%ld %s", value, unit != NULL ? unit : "");
+    }
+}
+
+void Genicam::handleFeatureFloat(ArvGcNode *_node) {
+    const char *unit = arv_gc_float_get_unit(ARV_GC_FLOAT(_node));
+    GError *error = NULL;
+    double value = arv_gc_float_get_value(ARV_GC_FLOAT(_node), &error);
+    assert(error == NULL);
+    ImGui::Text("%.3f %s", value, unit != NULL ? unit : "");
+}
+
+void Genicam::handleFeatureBoolean(ArvGcNode *_node) {
+    GError *error = NULL;
+    bool value = arv_gc_boolean_get_value(ARV_GC_BOOLEAN(_node), &error);
+    assert(error == NULL);
+    ImGui::Text("%s", value ? "true" : "false");
+}
+
+void Genicam::handleFeatureString(ArvGcNode *_node) {
+    GError *error = NULL;
+    const char *value = arv_gc_string_get_value(ARV_GC_STRING(_node), &error);
+    assert(error == NULL);
+    ImGui::Text("%s", value);
+}
+
+void Genicam::handleFeatureCommand(ArvGcNode *_node) {
+    ImGui::Text("%s", "COMMAND");
 }

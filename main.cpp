@@ -225,30 +225,10 @@ int main(int, char**)
         {
             viewer->showCameraImage();
         }
-#if 0
-            ImGui::Text("pointer = %p", (void*)(intptr_t)imageTexture);
-            static int bufferCount = 0;
-            static int totalBufferCount = 0;
-            static int errorCount = 0;
-            static double transferred = 0;
-            if (timeout <= ImGui::GetTime()) {
-                bufferCount = cam->bufferCount;
-                totalBufferCount += bufferCount;
-                errorCount += cam->errorCount;
-                transferred = (double) cam->transferred / 1e6;
-                //cam->periodic_task_cb();
-                // reset the stats until next timeout (1 s)
-                cam->bufferCount = 0;
-                cam->errorCount = 0;
-                cam->transferred = 0;
-                timeout = ImGui::GetTime() + 1.0;
-            }
-            ImGui::Text("frames/s  %d", bufferCount);
-            ImGui::Text("transfer  %.3g MiB/s", transferred);
-            ImGui::Text("completed %d", totalBufferCount);
-            ImGui::Text("error     %d", errorCount);
+
+        {
+            viewer->showCameraFeatures();
         }
-#endif
 
         // Rendering
         ImGui::Render();

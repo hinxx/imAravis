@@ -488,6 +488,8 @@
 
 	<Category Name="Debug" NameSpace="Standard">
 		<pFeature>TestRegister</pFeature>
+		<pFeature>TestBoolean</pFeature>
+		<pFeature>TestSelector</pFeature>
 	</Category>
 
 	<Boolean Name="TestBoolean" NameSpace="Custom">
@@ -535,6 +537,49 @@
 		<AccessMode>RW</AccessMode>
 		<pPort>Device</pPort>
 	</StringReg>
+
+    <Integer Name="TestSelector" NameSpace="Custom">
+      <ToolTip>Selects which Connection of the device to control.</ToolTip>
+      <Description>Selects which Connection of the device to control.</Description>
+      <DisplayName>Device Connection Selector</DisplayName>
+<!--      <Visibility>Beginner</Visibility>-->
+      <ImposedAccessMode>RW</ImposedAccessMode>
+      <Value>0</Value>
+      <pSelected>DeviceConnectionSpeed</pSelected>
+      <pSelected>DeviceConnectionStatus</pSelected>
+    </Integer>
+
+    <Integer Name="DeviceConnectionSpeed" NameSpace="Custom">
+      <!-- Optional element -->
+      <ToolTip>Indicates the speed of transmission of the specified Connection.</ToolTip>
+      <Description>Indicates the speed of transmission of the specified Connection</Description>
+      <DisplayName>Device Connection Speed</DisplayName>
+<!--      <Visibility>Expert</Visibility>-->
+      <ImposedAccessMode>RO</ImposedAccessMode>
+      <Value>0</Value>
+      <Unit>Bps</Unit>
+    </Integer>
+    <Enumeration Name="DeviceConnectionStatus" NameSpace="Custom">
+      <!-- Optional element -->
+      <ToolTip>Indicates the status of the specified Connection.</ToolTip>
+      <Description>Indicates the status of the specified Connection.</Description>
+      <DisplayName>Device Connection Status</DisplayName>
+<!--      <Visibility>Expert</Visibility>-->
+      <ImposedAccessMode>RO</ImposedAccessMode>
+      <EnumEntry Name="Active" NameSpace="Custom">
+        <ToolTip>Connection is in use.</ToolTip>
+        <Description>Connection is in use.</Description>
+        <DisplayName>Active</DisplayName>
+        <Value>0</Value>
+      </EnumEntry>
+      <EnumEntry Name="Inactive" NameSpace="Custom">
+        <ToolTip>Connection is not in use.</ToolTip>
+        <Description>Connection is not in use.</Description>
+        <DisplayName>Inactive</DisplayName>
+        <Value>1</Value>
+      </EnumEntry>
+      <Value>0</Value>
+    </Enumeration>
 
 	<!-- Port -->
 

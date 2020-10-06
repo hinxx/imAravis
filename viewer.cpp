@@ -36,6 +36,8 @@ Viewer::~Viewer() {
         camera->stop();
     }
     clearCameraList();
+
+    arv_shutdown();
 }
 
 void Viewer::clearCameraList(void) {
@@ -85,11 +87,9 @@ void Viewer::startCamera(void) {
         E("no camera.. nothing to do..\n");
         return;
     }
-    camera->start();
 
-    // list camera features
+    camera->start();
     genicam->initialize(camera->camera);
-    genicam->listFeatures();
 }
 
 void Viewer::stopCamera(void) {
@@ -98,6 +98,7 @@ void Viewer::stopCamera(void) {
         D("no camera.. nothing to do..\n");
         return;
     }
+    genicam->destroy();
     camera->stop();
 }
 
@@ -197,10 +198,7 @@ void Viewer::showCameraInfo(void) {
         numErrors = 0;
         numBytes = 0;
     }
-//    ImGui::SameLine();
-//    if (ImGui::Button("Apply colormap")) {
-//        image->updatePalette(256, image->colorMap);
-//    }
+
     ImGui::AlignTextToFramePadding();
     ImGui::SetNextItemWidth(200);
     const char * paletteCurrent = NULL;
@@ -271,6 +269,32 @@ void Viewer::showCameraImage(void) {
 
     image->render();
 
+    ImGui::End();
+}
+
+void Viewer::showCameraFeatures(void) {
+    // show this window only if a camera is selected
+    if (! selectedCamera) {
+        return;
+    }
+
+    ImGui::Begin("Features Window");
+
+//    if (camera->imageUpdate) {
+//        image->updateImage(camera->imageWidth, camera->imageHeight, camera->imageData);
+//        camera->imageUpdate = false;
+//    }
+
+//    image->render();
+    ImGui::PushStyleVar(ImGuiStyleVar_FramePadding, ImVec2(2, 2));
+    ImGui::Columns(2);
+    ImGui::Separator();
+
+    genicam->listFeatures();
+
+    ImGui::Columns(1);
+    ImGui::Separator();
+    ImGui::PopStyleVar();
     ImGui::End();
 }
 
