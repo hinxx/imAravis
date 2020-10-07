@@ -20,13 +20,16 @@ const GLchar* fragment_shader =
     "out vec4 FragColor;\n"
     "in vec2 TexCoords;\n"                  // from vertex shader
     "uniform sampler2D screenTexture;\n"    // our texture (grayscale)
-    "uniform sampler1D ColorTable;\n"       // our colormap 256 colors
+    "uniform sampler2D ColorTable;\n"       // our colormap 256 colors
+    "\n"
     "void main()\n"
     "{\n"
     // Pick up a color index
     "    vec4 index = texture2D(screenTexture, TexCoords);\n"
+    "    float xp = mod(index.x, 256.0);\n"
+    "    float yp = index.x / 256.0;\n"
     // Retrieve the actual color from the palette
-    "    vec4 texel = texture1D(ColorTable, index.x);\n"
+    "    vec4 texel = texture2D(ColorTable, vec2(xp, yp));\n"
     // Output the color
     "    FragColor = texel;"
     "}\n";
@@ -260,11 +263,11 @@ Image::Image() {
 
     // Create a OpenGL texture identifier for color map
     glGenTextures(1, &paletteTexture);
-    glBindTexture(GL_TEXTURE_1D, paletteTexture);
-    // glTexParameteri(GL_TEXTURE_1D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
-    // glTexParameteri(GL_TEXTURE_1D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
-    glTexParameteri(GL_TEXTURE_1D, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
-    glTexParameteri(GL_TEXTURE_1D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
+    glBindTexture(GL_TEXTURE_2D, paletteTexture);
+    // glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
+    // glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
     // Upload pixels into texture
     glPixelStorei(GL_UNPACK_ROW_LENGTH, 0);
 
@@ -272,7 +275,7 @@ Image::Image() {
     // XXX: To change texels in an already existing 2d texture, use glTexSubImage2D
     //      https://www.khronos.org/opengl/wiki/Common_Mistakes#Updating_a_texture
 //    glTexImage1D(GL_TEXTURE_1D, 0, GL_RGBA8, 256, 0, GL_RGBA, GL_UNSIGNED_BYTE, colorMap);
-    glTexImage1D(GL_TEXTURE_1D, 0, GL_RGBA8, 256, 0, GL_RGBA, GL_UNSIGNED_BYTE, NULL);
+    glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA8, 256, 256, 0, GL_RGBA, GL_UNSIGNED_BYTE, NULL);
     glError = glGetError();
     if (glError != GL_NO_ERROR) {
         E("glGetError() returned 0x%04X\n", glError);
@@ -380,7 +383,7 @@ void Image::updateImage(const unsigned int _width, const unsigned int _height, c
     glBindTexture(GL_TEXTURE_2D, rawTexture);
     // colormap 1D texture
     glActiveTexture(GL_TEXTURE1);
-    glBindTexture(GL_TEXTURE_1D, paletteTexture);
+    glBindTexture(GL_TEXTURE_2D, paletteTexture);
     // GL_RGBA8 = 8 bits got each color and alpha
     // XXX: To change texels in an already existing 2d texture, use glTexSubImage2D
     //      https://www.khronos.org/opengl/wiki/Common_Mistakes#Updating_a_texture
@@ -412,13 +415,15 @@ void Image::updatePalette(const unsigned int _width, const void *_data) {
     assert(paletteTexture != 0);
 
     glActiveTexture(GL_TEXTURE1);
-    glBindTexture(GL_TEXTURE_1D, paletteTexture);
+    glBindTexture(GL_TEXTURE_2D, paletteTexture);
 
     //glTexImage1D(GL_TEXTURE_1D, 0, GL_RGBA8, 256, 0, GL_RGBA, GL_UNSIGNED_BYTE, colorMap);
-    glTexSubImage1D(GL_TEXTURE_1D,
+    glTexSubImage2D(GL_TEXTURE_2D,
+        0,
         0,
         0,
         _width,
+        256,
         GL_RGBA,
         GL_UNSIGNED_BYTE,
         _data);
