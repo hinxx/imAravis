@@ -85,7 +85,7 @@ struct PaletteList {
     ~PaletteList();
     const char * getName(const unsigned int _index);
     unsigned int getCount(void);
-    unsigned char *generate(const char *_name, const unsigned int _size);
+    unsigned char *generate(const char *_name, const unsigned int _depth);
 };
 
 #endif // PALETTE_H

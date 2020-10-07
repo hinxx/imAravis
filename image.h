@@ -14,7 +14,7 @@ struct Image {
     unsigned int imageWidth;
     unsigned int imageHeight;
     unsigned int imageDepth;
-    unsigned char colorMap[256][4];
+//    unsigned char colorMap[256][4];
     double scaleWidth;
     double scaleHeight;
 
@@ -22,9 +22,9 @@ struct Image {
     ~Image();
 
     void initColorMap(void);
-    void updateImage(const unsigned int _width, const unsigned int _height, const void *_data);
+    void updateImage(const unsigned int _width, const unsigned int _height, const unsigned int _depth, const void *_data);
     void updateScale(const double _scaleWidth, const double _scaleHeight);
-    void updatePalette(const unsigned int _width, const void *_data);
+    void updatePalette(const unsigned int _depth, const void *_data);
     void render(void);
 };
 

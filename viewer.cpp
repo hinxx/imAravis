@@ -212,8 +212,10 @@ void Viewer::showCameraInfo(void) {
                 paletteCurrentIndex = n;
                 paletteCurrent = paletteList.getName(paletteCurrentIndex);
                 D("palette changed to %d = %s\n", paletteCurrentIndex, paletteCurrent);
-                unsigned char *map = paletteList.generate(paletteCurrent, 256);
-                image->updatePalette(256, map);
+                assert((camera->imageDepth == 8) || (camera->imageDepth == 16));
+                unsigned char *map = paletteList.generate(paletteCurrent, camera->imageDepth);
+                assert(map != NULL);
+                image->updatePalette(camera->imageDepth, map);
             }
             // set the initial focus when opening the combo
             if (isSelected) {
@@ -263,7 +265,7 @@ void Viewer::showCameraImage(void) {
     ImGui::Begin("Image Window");
 
     if (camera->imageUpdate) {
-        image->updateImage(camera->imageWidth, camera->imageHeight, camera->imageData);
+        image->updateImage(camera->imageWidth, camera->imageHeight, camera->imageDepth, camera->imageData);
         camera->imageUpdate = false;
     }
 

@@ -290,6 +290,23 @@ bool Camera::infoQuery(void) {
     numPixelFormats = numValidFormats;
     pixelFormat = arv_camera_get_pixel_format(camera, &error);
     assert(error == NULL);
+    // allow setting the colormap before acquairing the first image
+    imageDepth = 0;
+    switch (pixelFormat) {
+    case ARV_PIXEL_FORMAT_MONO_16:
+        // D("pixel format ARV_PIXEL_FORMAT_MONO_16\n");
+        imageDepth = 16;
+        break;
+    case ARV_PIXEL_FORMAT_MONO_8:
+        // D("pixel format ARV_PIXEL_FORMAT_MONO_8\n");
+        imageDepth = 8;
+        break;
+    default:
+        E("unhandled pixel format 0x%X\n", pixelFormat);
+        break;
+    }
+    assert(imageDepth != 0);
+    // D("RGB image %lu bytes, pixel format RGB\n", size);
 
     double minf, maxf;
     arv_camera_get_exposure_time_bounds(camera, &minf, &maxf, &error);
@@ -476,7 +493,7 @@ void Camera::newBufferCallback(ArvStream *_stream, void *_userData) {
     camera->numImages++;
     camera->numBytes += size;
 
-    // main loop will pick the new frame data
+    // main loop will pick up the new frame data
     camera->imageUpdate = true;
     //D("new image available!\n");
 
@@ -583,6 +600,22 @@ void Camera::setPixelFormat(const unsigned int _value) {
         assert(error == NULL);
         g_clear_error(&error);
     }
+
+    imageDepth = 0;
+    switch (pixelFormat) {
+    case ARV_PIXEL_FORMAT_MONO_16:
+        // D("pixel format ARV_PIXEL_FORMAT_MONO_16\n");
+        imageDepth = 16;
+        break;
+    case ARV_PIXEL_FORMAT_MONO_8:
+        // D("pixel format ARV_PIXEL_FORMAT_MONO_8\n");
+        imageDepth = 8;
+        break;
+    default:
+        E("unhandled pixel format 0x%X\n", pixelFormat);
+        break;
+    }
+    assert(imageDepth != 0);
 }
 
 void Camera::setFrameRate(const float _value) {

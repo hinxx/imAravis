@@ -211,24 +211,23 @@ unsigned int PaletteList::getCount(void) {
     return (unsigned int)items.size();
 }
 
-unsigned char * PaletteList::generate(const char *_name, const unsigned int _size) {
+unsigned char * PaletteList::generate(const char *_name, const unsigned int _depth) {
+    const unsigned int size = 1 << _depth;
     for (size_t i = 0; i < items.size(); i++) {
         Palette *pal = items[i];
         if (strncmp(_name, pal->name, strlen(_name)) == 0) {
-            // allocate/reallocate palette
-            if (map == NULL) {
-                map = (unsigned char *)malloc(_size * 4);
-            } else {
-                if (mapSize < _size) {
-                    map = (unsigned char *)realloc(map, _size * 4);
-                }
+            // allocate/reallocate palette for RGBA pixel format
+            if (mapSize == 0) {
+                assert(map == NULL);
+                map = (unsigned char *)malloc(size * 4);
+            } else if (mapSize < size) {
+                map = (unsigned char *)realloc(map, size * 4);
             }
-            mapSize = _size;
+            mapSize = size;
 
-            float val;
             float scale = (float)mapSize - 1.0;
             for (unsigned int i = 0; i < mapSize; i++) {
-                val = (float)i / scale;
+                float val = (float)i / scale;
                 pal->setColor(val, scale, &map[i * 4]);
                 // D("%s RGBA %3d %3d %3d %3d\n", pal->name, map[i * 4 + 0], map[i * 4 + 1], map[i * 4 + 2], map[i * 4 + 3]);
             }

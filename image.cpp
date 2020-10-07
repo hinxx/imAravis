@@ -341,7 +341,7 @@ Image::~Image() {
 
 }
 
-void Image::updateImage(const unsigned int _width, const unsigned int _height, const void *_data) {
+void Image::updateImage(const unsigned int _width, const unsigned int _height, const unsigned int _depth, const void *_data) {
     assert(rawTexture != 0);
 
 //    GLuint glError;
@@ -437,19 +437,28 @@ void Image::updateScale(const double _scaleWidth, const double _scaleHeight) {
     scaleHeight = _scaleHeight;
 }
 
-void Image::updatePalette(const unsigned int _width, const void *_data) {
+void Image::updatePalette(const unsigned int _depth, const void *_data) {
     assert(paletteTexture != 0);
 
     glActiveTexture(GL_TEXTURE1);
     glBindTexture(GL_TEXTURE_2D, paletteTexture);
 
     //glTexImage1D(GL_TEXTURE_1D, 0, GL_RGBA8, 256, 0, GL_RGBA, GL_UNSIGNED_BYTE, colorMap);
+
+    unsigned int width = 256;
+    unsigned int height = 0;
+    if (_depth == 8) {
+        height = 1;
+    } else if (_depth == 16) {
+        height = 256;
+    }
+    assert(height != 0);
     glTexSubImage2D(GL_TEXTURE_2D,
         0,
         0,
         0,
-        _width,
-        1,
+        width,
+        height,
         GL_RGBA,
         GL_UNSIGNED_BYTE,
         _data);
