@@ -381,16 +381,16 @@ void Camera::streamCallback(void *_userData, ArvStreamCallbackType _type, ArvBuf
     (void)_userData;
     (void)_buffer;
     if (_type == ARV_STREAM_CALLBACK_TYPE_INIT) {
-        D("ARV_STREAM_CALLBACK_TYPE_INIT\n");
+        //D("ARV_STREAM_CALLBACK_TYPE_INIT\n");
 		if (! arv_make_thread_realtime (10) && ! arv_make_thread_high_priority (-10)) {
             E("Failed to make stream thread high priority");
         }
 	} else if (_type == ARV_STREAM_CALLBACK_TYPE_EXIT) {
-        D("ARV_STREAM_CALLBACK_TYPE_EXIT\n");
+        //D("ARV_STREAM_CALLBACK_TYPE_EXIT\n");
     } else if (_type == ARV_STREAM_CALLBACK_TYPE_START_BUFFER) {
-        D("ARV_STREAM_CALLBACK_TYPE_START_BUFFER\n");
+        //D("ARV_STREAM_CALLBACK_TYPE_START_BUFFER\n");
     } else if (_type == ARV_STREAM_CALLBACK_TYPE_BUFFER_DONE) {
-        D("ARV_STREAM_CALLBACK_TYPE_BUFFER_DONE\n");
+        //D("ARV_STREAM_CALLBACK_TYPE_BUFFER_DONE\n");
     } else {
         assert(1 != 1);
     }
@@ -413,7 +413,7 @@ void Camera::newBufferCallback(ArvStream *_stream, void *_userData) {
     }
 
 	arv_stream_get_n_buffers(_stream, &n_input_buffers, &n_output_buffers);
-	D("have %d in, %d out buffers \n", n_input_buffers, n_output_buffers);
+	//D("have %d in, %d out buffers \n", n_input_buffers, n_output_buffers);
 
     if (arv_buffer_get_status(buffer) != ARV_BUFFER_STATUS_SUCCESS) {
         camera->numErrors++;
@@ -433,17 +433,17 @@ void Camera::newBufferCallback(ArvStream *_stream, void *_userData) {
     const void *raw = arv_buffer_get_data(buffer, &size);
     assert(raw != NULL);
     int pixelFormat = arv_buffer_get_image_pixel_format(buffer);
-    D("raw image %lu bytes, pixel format %08X\n", size, pixelFormat);
+    //D("raw image %lu bytes, pixel format %08X\n", size, pixelFormat);
 
     int imageDepth = 0;
     switch (pixelFormat) {
     case ARV_PIXEL_FORMAT_MONO_16:
         // D("pixel format ARV_PIXEL_FORMAT_MONO_16\n");
-        imageDepth = 2;
+        imageDepth = 16;
         break;
     case ARV_PIXEL_FORMAT_MONO_8:
         // D("pixel format ARV_PIXEL_FORMAT_MONO_8\n");
-        imageDepth = 1;
+        imageDepth = 8;
         break;
     default:
         E("unhandled pixel format 0x%X\n", pixelFormat);
@@ -472,12 +472,13 @@ void Camera::newBufferCallback(ArvStream *_stream, void *_userData) {
     memcpy(camera->imageData, raw, size);
     camera->imageWidth = imageWidth;
     camera->imageHeight = imageHeight;
+    camera->imageDepth = imageDepth;
     camera->numImages++;
     camera->numBytes += size;
 
     // main loop will pick the new frame data
     camera->imageUpdate = true;
-    D("new image available!\n");
+    //D("new image available!\n");
 
     // always return the buffer to the stream
     arv_stream_push_buffer(_stream, buffer);

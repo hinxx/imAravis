@@ -69,6 +69,7 @@ struct Camera {
     unsigned int imageWidth;
     unsigned int imageHeight;
     unsigned int imagePayload;
+    unsigned int imageDepth;
     bool imageUpdate;
 
     unsigned int numImages;
