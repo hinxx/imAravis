@@ -311,6 +311,7 @@ Image::Image() {
     // XXX: To change texels in an already existing 2d texture, use glTexSubImage2D
     //      https://www.khronos.org/opengl/wiki/Common_Mistakes#Updating_a_texture
 //    glTexImage2D(GL_TEXTURE_2D, 0, GL_R8, 4096, 4096, 0, GL_RED, GL_UNSIGNED_BYTE, NULL);
+    // default to 8bit image
     glTexImage2D(GL_TEXTURE_2D, 0, GL_R8, imageWidth, imageHeight, 0, GL_RED, GL_UNSIGNED_BYTE, NULL);
 //    glError = glGetError();
 //    if (glError != GL_NO_ERROR) {
@@ -349,6 +350,32 @@ void Image::updateImage(const unsigned int _width, const unsigned int _height, c
     glActiveTexture(GL_TEXTURE0);
     glBindTexture(GL_TEXTURE_2D, rawTexture);
 
+    imageWidth = _width;
+    imageHeight = _height;
+    if (imageDepth != _depth) {
+        imageDepth = _depth;
+        D("changing depth to %d\n", imageDepth);
+        if (imageDepth == 8) {
+            // 8 bit image
+            glTexImage2D(GL_TEXTURE_2D, 0, GL_R8, imageWidth, imageHeight, 0, GL_RED, GL_UNSIGNED_BYTE, NULL);
+        } else if (imageDepth == 16) {
+            // 16 bit image
+            glTexImage2D(GL_TEXTURE_2D, 0, GL_R16, imageWidth, imageHeight, 0, GL_RED, GL_UNSIGNED_SHORT, NULL);
+        }
+        GLint format;
+        glGetTexLevelParameteriv(GL_TEXTURE_2D, 0, GL_TEXTURE_INTERNAL_FORMAT, &format);
+        D("rawTexture using internal format 0x%X\n", format);
+    }
+
+    GLenum format = -1;
+    if (imageDepth == 8) {
+        // 8 bit image
+        format = GL_UNSIGNED_BYTE;
+    } else if (imageDepth == 16) {
+        // 16 bit image
+        format = GL_UNSIGNED_SHORT;
+    }
+
     // we expect a R8 type of pixel data wo/ alpha
     // GL_RED means single channels
     // GL_R8 is for 8 bit indexed images
@@ -360,10 +387,10 @@ void Image::updateImage(const unsigned int _width, const unsigned int _height, c
         0,
         0,
         0,
-        _width,
-        _height,
+        imageWidth,
+        imageHeight,
         GL_RED,
-        GL_UNSIGNED_BYTE,
+        format,//GL_UNSIGNED_BYTE,
         _data);
 //    glError = glGetError();
 //    if (glError != GL_NO_ERROR) {
@@ -371,8 +398,8 @@ void Image::updateImage(const unsigned int _width, const unsigned int _height, c
 //    }
 //    assert(glError == 0);
 
-    imageWidth = _width;
-    imageHeight = _height;
+//    imageWidth = _width;
+//    imageHeight = _height;
 
     // render to FBO
     // bind to framebuffer and draw scene as we normally would to color texture
@@ -383,7 +410,7 @@ void Image::updateImage(const unsigned int _width, const unsigned int _height, c
     glClearColor(clear_color.x, clear_color.y, clear_color.z, clear_color.w);
     glClear(GL_COLOR_BUFFER_BIT);
 
-//    glUseProgram(shaderHandle);
+    glUseProgram(shaderHandle);
 
 //    // set shader uniform index for indexed image: 0
 //    glUniform1i(glGetUniformLocation(shaderHandle, "screenTexture"), 0);
