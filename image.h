@@ -13,6 +13,7 @@ struct Image {
 
     unsigned int imageWidth;
     unsigned int imageHeight;
+    unsigned int imageDepth;
     unsigned char colorMap[256][4];
     double scaleWidth;
     double scaleHeight;

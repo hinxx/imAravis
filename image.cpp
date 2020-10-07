@@ -20,17 +20,18 @@ const GLchar* fragment_shader =
     "out vec4 FragColor;\n"
     "in vec2 TexCoords;\n"                  // from vertex shader
     "uniform sampler2D screenTexture;\n"    // our texture (grayscale)
-    "uniform sampler2D ColorTable;\n"       // our colormap 256 colors
+    "uniform sampler2D ColorTable;\n"       // our palette
     "\n"
     "void main()\n"
     "{\n"
-    // Pick up a color index
+    // pick up a pixel intensity from grayscale image
     "    vec4 index = texture2D(screenTexture, TexCoords);\n"
-    "    float xp = mod(index.x, 256.0);\n"
-    "    float yp = index.x / 256.0;\n"
-    // Retrieve the actual color from the palette
+    // generate x,y index into palette holding the color for this intensity
+    "    float xp = mod(index.r, 256.0);\n"
+    "    float yp = index.r / 256.0;\n"
+    // retrieve the actual color from the palette
     "    vec4 texel = texture2D(ColorTable, vec2(xp, yp));\n"
-    // Output the color
+    // output the color
     "    FragColor = texel;"
     "}\n";
 
@@ -73,6 +74,7 @@ static bool CheckProgram(GLuint handle, const char* desc)
     return (GLboolean)status == GL_TRUE;
 }
 
+#if 0
 // from https://github.com/kbinani/colormap-shaders
 // Matlab JET colormap
 struct vec4
@@ -157,10 +159,14 @@ void Image::initColorMap(void) {
     }
 }
 // Matlab JET colormap
+#endif
 
 Image::Image() {
 
-    // default size
+    // default image properties
+    imageWidth = 512;
+    imageHeight = 512;
+    imageDepth = 8;
     scaleWidth = 1.0f;
     scaleHeight = 1.0f;
 
@@ -250,16 +256,15 @@ Image::Image() {
     if (glCheckFramebufferStatus(GL_FRAMEBUFFER) != GL_FRAMEBUFFER_COMPLETE) {
         E("Framebuffer is not complete!");
     }
-
-    GLuint glError = glGetError();
-    if (glError != GL_NO_ERROR) {
-        E("glGetError() returned 0x%04X\n", glError);
-    }
-    assert(glError == 0);
+//    GLuint glError = glGetError();
+//    if (glError != GL_NO_ERROR) {
+//        E("glGetError() returned 0x%04X\n", glError);
+//    }
+//    assert(glError == 0);
 
     glBindFramebuffer(GL_FRAMEBUFFER, 0);
 
-    initColorMap();
+//    initColorMap();
 
     // Create a OpenGL texture identifier for color map
     glGenTextures(1, &paletteTexture);
@@ -276,11 +281,11 @@ Image::Image() {
     //      https://www.khronos.org/opengl/wiki/Common_Mistakes#Updating_a_texture
 //    glTexImage1D(GL_TEXTURE_1D, 0, GL_RGBA8, 256, 0, GL_RGBA, GL_UNSIGNED_BYTE, colorMap);
     glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA8, 256, 256, 0, GL_RGBA, GL_UNSIGNED_BYTE, NULL);
-    glError = glGetError();
-    if (glError != GL_NO_ERROR) {
-        E("glGetError() returned 0x%04X\n", glError);
-    }
-    assert(glError == 0);
+//    glError = glGetError();
+//    if (glError != GL_NO_ERROR) {
+//        E("glGetError() returned 0x%04X\n", glError);
+//    }
+//    assert(glError == 0);
 
     // Create a OpenGL texture identifier for raw image
     glGenTextures(1, &rawTexture);
@@ -293,11 +298,11 @@ Image::Image() {
     // Upload pixels into texture
     glPixelStorei(GL_UNPACK_ROW_LENGTH, 0);
 
-    glError = glGetError();
-    if (glError != GL_NO_ERROR) {
-        E("glGetError() returned 0x%04X\n", glError);
-    }
-    assert(glError == 0);
+//    glError = glGetError();
+//    if (glError != GL_NO_ERROR) {
+//        E("glGetError() returned 0x%04X\n", glError);
+//    }
+//    assert(glError == 0);
 
     // we expect a R8 type of pixel data wo/ alpha
     // GL_RED means single channels
@@ -306,12 +311,30 @@ Image::Image() {
     // XXX: To change texels in an already existing 2d texture, use glTexSubImage2D
     //      https://www.khronos.org/opengl/wiki/Common_Mistakes#Updating_a_texture
 //    glTexImage2D(GL_TEXTURE_2D, 0, GL_R8, 4096, 4096, 0, GL_RED, GL_UNSIGNED_BYTE, NULL);
-    glTexImage2D(GL_TEXTURE_2D, 0, GL_R8, 512, 512, 0, GL_RED, GL_UNSIGNED_BYTE, NULL);
-    glError = glGetError();
-    if (glError != GL_NO_ERROR) {
-       E("ERROR: glGetError() returned 0x%04X\n", glError);
-    }
-    assert(glError == 0);
+    glTexImage2D(GL_TEXTURE_2D, 0, GL_R8, imageWidth, imageHeight, 0, GL_RED, GL_UNSIGNED_BYTE, NULL);
+//    glError = glGetError();
+//    if (glError != GL_NO_ERROR) {
+//       E("ERROR: glGetError() returned 0x%04X\n", glError);
+//    }
+//    assert(glError == 0);
+
+    glUseProgram(shaderHandle);
+
+    // set shader uniform index for indexed image: 0
+    glUniform1i(glGetUniformLocation(shaderHandle, "screenTexture"), 0);
+//    glError = glGetError();
+//    if (glError != GL_NO_ERROR) {
+//        E("glGetError() returned 0x%04X\n", glError);
+//    }
+//    assert(glError == 0);
+
+    // set shader uniform index for colomap array: 1
+    glUniform1i(glGetUniformLocation(shaderHandle, "ColorTable"), 1);
+//    glError = glGetError();
+//    if (glError != GL_NO_ERROR) {
+//        E("glGetError() returned 0x%04X\n", glError);
+//    }
+//    assert(glError == 0);
 }
 
 Image::~Image() {
@@ -321,7 +344,10 @@ Image::~Image() {
 void Image::updateImage(const unsigned int _width, const unsigned int _height, const void *_data) {
     assert(rawTexture != 0);
 
-    GLuint glError;
+//    GLuint glError;
+
+    glActiveTexture(GL_TEXTURE0);
+    glBindTexture(GL_TEXTURE_2D, rawTexture);
 
     // we expect a R8 type of pixel data wo/ alpha
     // GL_RED means single channels
@@ -339,11 +365,11 @@ void Image::updateImage(const unsigned int _width, const unsigned int _height, c
         GL_RED,
         GL_UNSIGNED_BYTE,
         _data);
-    glError = glGetError();
-    if (glError != GL_NO_ERROR) {
-       E("ERROR: glGetError() returned 0x%04X\n", glError);
-    }
-    assert(glError == 0);
+//    glError = glGetError();
+//    if (glError != GL_NO_ERROR) {
+//       E("ERROR: glGetError() returned 0x%04X\n", glError);
+//    }
+//    assert(glError == 0);
 
     imageWidth = _width;
     imageHeight = _height;
@@ -357,23 +383,23 @@ void Image::updateImage(const unsigned int _width, const unsigned int _height, c
     glClearColor(clear_color.x, clear_color.y, clear_color.z, clear_color.w);
     glClear(GL_COLOR_BUFFER_BIT);
 
-    glUseProgram(shaderHandle);
+//    glUseProgram(shaderHandle);
 
-    // set shader uniform index for indexed image: 0
-    glUniform1i(glGetUniformLocation(shaderHandle, "screenTexture"), 0);
-    glError = glGetError();
-    if (glError != GL_NO_ERROR) {
-        E("glGetError() returned 0x%04X\n", glError);
-    }
-    assert(glError == 0);
+//    // set shader uniform index for indexed image: 0
+//    glUniform1i(glGetUniformLocation(shaderHandle, "screenTexture"), 0);
+//    glError = glGetError();
+//    if (glError != GL_NO_ERROR) {
+//        E("glGetError() returned 0x%04X\n", glError);
+//    }
+//    assert(glError == 0);
 
-    // set shader uniform index for colomap array: 1
-    glUniform1i(glGetUniformLocation(shaderHandle, "ColorTable"), 1);
-    glError = glGetError();
-    if (glError != GL_NO_ERROR) {
-        E("glGetError() returned 0x%04X\n", glError);
-    }
-    assert(glError == 0);
+//    // set shader uniform index for colomap array: 1
+//    glUniform1i(glGetUniformLocation(shaderHandle, "ColorTable"), 1);
+//    glError = glGetError();
+//    if (glError != GL_NO_ERROR) {
+//        E("glGetError() returned 0x%04X\n", glError);
+//    }
+//    assert(glError == 0);
 
     // rectangle vertex array
     glBindVertexArray(vao);
@@ -389,11 +415,11 @@ void Image::updateImage(const unsigned int _width, const unsigned int _height, c
     //      https://www.khronos.org/opengl/wiki/Common_Mistakes#Updating_a_texture
     //glTexImage1D(GL_TEXTURE_1D, 0, GL_RGBA8, 256, 0, GL_RGBA, GL_UNSIGNED_BYTE, colorMap);
 
-    glError = glGetError();
-    if (glError != GL_NO_ERROR) {
-        E("glGetError() returned 0x%04X\n", glError);
-    }
-    assert(glError == 0);
+//    glError = glGetError();
+//    if (glError != GL_NO_ERROR) {
+//        E("glGetError() returned 0x%04X\n", glError);
+//    }
+//    assert(glError == 0);
 
     // render the image to fbo
     glDrawElements(GL_TRIANGLES, 6, GL_UNSIGNED_INT, 0);
@@ -423,15 +449,15 @@ void Image::updatePalette(const unsigned int _width, const void *_data) {
         0,
         0,
         _width,
-        256,
+        1,
         GL_RGBA,
         GL_UNSIGNED_BYTE,
         _data);
-    GLuint glError = glGetError();
-    if (glError != GL_NO_ERROR) {
-       E("ERROR: glGetError() returned 0x%04X\n", glError);
-    }
-    assert(glError == 0);
+//    GLuint glError = glGetError();
+//    if (glError != GL_NO_ERROR) {
+//       E("ERROR: glGetError() returned 0x%04X\n", glError);
+//    }
+//    assert(glError == 0);
 
     glActiveTexture(GL_TEXTURE0);
 }
