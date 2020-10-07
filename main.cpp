@@ -11,6 +11,7 @@
 #include "imgui_impl_opengl3.h"
 #include <stdio.h>
 
+#include "debug.h"
 #include "imaravis.h"
 #include "viewer.h"
 
@@ -53,6 +54,44 @@ using namespace gl;
 static void glfw_error_callback(int error, const char* description)
 {
     fprintf(stderr, "Glfw Error %d: %s\n", error, description);
+}
+
+void MessageCallback(GLenum _source,
+                 GLenum _type,
+                 GLuint _id,
+                 GLenum _severity,
+                 GLsizei _length,
+                 const GLchar* _message,
+                 void* _userParam)
+{
+    (void)_userParam;
+    (void)_length;
+    const char *severity = "???";
+    switch (_severity){
+        case GL_DEBUG_SEVERITY_NOTIFICATION: severity = "NOTIFICATION"; break;
+        case GL_DEBUG_SEVERITY_LOW: severity = "LOW"; break;
+        case GL_DEBUG_SEVERITY_MEDIUM: severity = "MEDIUM"; break;
+        case GL_DEBUG_SEVERITY_HIGH: severity = "HIGH"; break;
+    }
+    const char *type = "???";
+    switch (_type) {
+        case GL_DEBUG_TYPE_ERROR: type = "ERROR"; break;
+        case GL_DEBUG_TYPE_DEPRECATED_BEHAVIOR: type = "DEPRECATED_BEHAVIOR"; break;
+        case GL_DEBUG_TYPE_UNDEFINED_BEHAVIOR: type = "UNDEFINED_BEHAVIOR"; break;
+        case GL_DEBUG_TYPE_PORTABILITY: type = "PORTABILITY"; break;
+        case GL_DEBUG_TYPE_PERFORMANCE: type = "PERFORMANCE"; break;
+        case GL_DEBUG_TYPE_OTHER: type = "OTHER"; break;
+        case GL_DEBUG_TYPE_MARKER: type = "MARKER"; break;
+        case GL_DEBUG_TYPE_PUSH_GROUP: type = "PUSH_GROUP"; break;
+        case GL_DEBUG_TYPE_POP_GROUP: type = "POP_GROUP"; break;
+    }
+    D("\n---------------------opengl-callback-start------------\n"
+      " source = 0x%X\n type = 0x%X %s\n severity = 0x%X %s\n id = %d\n message = %s\n"
+      "---------------------opengl-callback-end--------------\n",
+      _source, _type, type, _severity, severity, _id, _message);
+
+    // abort on error
+    assert(_type != GL_DEBUG_TYPE_ERROR);
 }
 
 int main(int, char**)
@@ -125,6 +164,17 @@ int main(int, char**)
     // Setup Platform/Renderer bindings
     ImGui_ImplGlfw_InitForOpenGL(window, true);
     ImGui_ImplOpenGL3_Init(glsl_version);
+
+    // enable debug output
+    glEnable(GL_DEBUG_OUTPUT);
+    glDebugMessageCallback(MessageCallback, 0);
+    GLuint unusedIds = 0;
+    glDebugMessageControl(GL_DONT_CARE,
+        GL_DONT_CARE,
+        GL_DONT_CARE,
+        0,
+        &unusedIds,
+        true);
 
     // Load Fonts
     // - If no fonts are loaded, dear imgui will use the default font. You can also load multiple fonts and use ImGui::PushFont()/PopFont() to select them.
